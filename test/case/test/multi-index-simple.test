@@ -1,0 +1,17 @@
+-- echo 1. multi-column index test
+CREATE TABLE test_multi(id int, col1 int, col2 float, col3 char(1));
+CREATE INDEX idx_12 ON test_multi(col1, col2);
+CREATE INDEX idx_123 ON test_multi(col1, col2, col3);
+-- sort SELECT * FROM test_multi;
+
+-- echo 2. insert data and query
+INSERT INTO test_multi VALUES (1, 10, 1.5, 'a');
+INSERT INTO test_multi VALUES (2, 10, 2.5, 'b');
+INSERT INTO test_multi VALUES (3, 20, 1.5, 'c');
+INSERT INTO test_multi VALUES (4, 20, 2.5, 'd');
+INSERT INTO test_multi VALUES (5, 30, 3.5, 'e');
+-- sort SELECT * FROM test_multi;
+
+-- echo 3. error cases
+CREATE TABLE test_multi2(id int, col1 int, col2 float);
+CREATE INDEX idx_error ON test_multi2(col1, col3);

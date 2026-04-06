@@ -1,7 +1,7 @@
 /* Copyright (c) 2021 OceanBase and/or its affiliates. All rights reserved.
 miniob is licensed under Mulan PSL v2.
 You can use this software according to the terms and conditions of the Mulan PSL v2.
-You may obtain a copy of Mulan PSL v2 at:
+You may obtain a copy of the Mulan PSL v2 at:
          http://license.coscl.org.cn/MulanPSL2
 THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
 EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
@@ -16,6 +16,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/sys/rc.h"
 #include "common/lang/string.h"
+#include "common/lang/vector.h"
 
 class TableMeta;
 class FieldMeta;
@@ -36,10 +37,13 @@ public:
   IndexMeta() = default;
 
   RC init(const char *name, const FieldMeta &field);
+  RC init(const char *name, const vector<const FieldMeta *> &fields);  // 多列索引
 
 public:
-  const char *name() const;
-  const char *field() const;
+  const char      *name() const;
+  const char      *field() const;          // 兼容单列索引
+  const vector<string> &fields() const;    // 多列索引字段列表
+  int               field_num() const;     // 字段数量
 
   void desc(ostream &os) const;
 
@@ -48,6 +52,6 @@ public:
   static RC from_json(const TableMeta &table, const Json::Value &json_value, IndexMeta &index);
 
 protected:
-  string name_;   // index's name
-  string field_;  // field's name
+  string         name_;    // index's name
+  vector<string> fields_;  // field names (支持多列)
 };
