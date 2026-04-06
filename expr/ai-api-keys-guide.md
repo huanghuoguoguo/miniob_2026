@@ -1,218 +1,168 @@
-# AI 辅助开发工具 - 免费 API Key 获取指南
+# OpenCode 配置指南（零 API Key、免费模型直连）
 
-> 本文档记录如何获取免费或低成本的 AI 模型 API Key，用于辅助 MiniOB 开发学习。
+> 本文档介绍如何配置 OpenCode，一款开源免费的终端 AI 编程助手。
 >
-> **推荐国内平台**，访问稳定，实名认证后即可领取免费额度。
+> **核心优势**：无需注册、无需 API Key、无需绑卡，安装后直接使用内置免费模型。
 
 ---
 
-## 一、DeepSeek（推荐）
+## 一、前置检查
 
-DeepSeek 是国产大模型，性价比极高，代码能力强。
+OpenCode 只需要 **Node.js 18+**，绝大多数 Linux 都能直接装。
 
-### 1. 注册账号
-
-1. 访问官网：https://platform.deepseek.com
-2. 用手机号或邮箱注册并登录
-
-### 2. 获取 API Key
-
-1. 登录后进入 **控制台**
-2. 点击左侧 **"API Keys"**
-3. 点击 **"创建 API Key"**
-4. 复制保存密钥（**仅显示一次**）
-
-**Key 格式**：`sk-xxxxxxxxxxxxxxxxxxxxxxxx`
-
-### 3. 免费额度
-
-- **新用户**：完成实名认证后，获得约 **10 元等值 Token 免费额度**（约 500 万 Token）
-- **有效期**：30 天
-- **价格**：DeepSeek-V3 约 ¥1/百万 tokens
-
-### 4. API 调用
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="sk-你的DeepSeek密钥",
-    base_url="https://api.deepseek.com/v1"
-)
-
-response = client.chat.completions.create(
-    model="deepseek-chat",  # 或 "deepseek-reasoner" (R1 推理模型)
-    messages=[{"role": "user", "content": "解释 B+ 树的插入过程"}]
-)
-
-print(response.choices[0].message.content)
-```
-
-### 5. 支持模型
-
-| 模型 | 说明 |
-|------|------|
-| `deepseek-chat` | 通用对话模型，适合日常开发 |
-| `deepseek-reasoner` | 推理模型（R1），适合复杂问题分析 |
-
----
-
-## 二、Kimi（月之暗面）
-
-Kimi 长文本处理能力突出，适合文档分析、代码生成等场景。
-
-### 1. 注册账号
-
-1. 访问官网：https://platform.moonshot.cn
-2. 用中国大陆手机号注册并登录
-
-### 2. 获取 API Key
-
-1. 登录后进入控制台
-2. 点击 **"API 密钥管理"**
-3. 点击 **"新建 API Key"**
-4. 填写名称后生成并保存（**仅显示一次**）
-
-### 3. 免费额度
-
-- **新用户**：完成个人实名认证后，自动发放 **15 元代金券**
-- **额度**：约 62.5 万–125 万 Token（视模型而定）
-- **有效期**：3 个月
-
-### 4. API 调用
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="你的Kimi密钥",
-    base_url="https://api.moonshot.cn/v1"
-)
-
-response = client.chat.completions.create(
-    model="moonshot-v1-8k",
-    messages=[{"role": "user", "content": "你好"}]
-)
-```
-
-### 5. 支持模型
-
-| 模型 | 上下文长度 | 说明 |
-|------|-----------|------|
-| `moonshot-v1-8k` | 8K | 日常对话 |
-| `moonshot-v1-32k` | 32K | 长文本处理 |
-| `moonshot-v1-128k` | 128K | 超长文本分析 |
-
----
-
-## 三、阿里云百炼（通义千问）
-
-### 1. 注册
-
-1. 访问：https://bailian.console.aliyun.com/
-2. 使用阿里云账号登录
-3. 选择地域（如华北2北京）
-
-### 2. 获取 API Key
-
-1. 进入 **百炼控制台**
-2. 点击左侧 **"API-KEY 管理"**
-3. 点击 **"创建 API Key"**
-
-### 3. 免费额度
-
-- **新用户**：开通即送 **超 7000 万 Tokens**（90 天有效期）
-- **魔搭社区**：实名用户享 **每日 2000 次免费调用**（长期有效）
-
-### 4. API 调用
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="你的阿里云API-Key",
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-)
-
-response = client.chat.completions.create(
-    model="qwen-turbo",  # 或 qwen-plus, qwen-max
-    messages=[{"role": "user", "content": "你好"}]
-)
-```
-
-### 5. 支持模型
-
-| 模型 | 说明 |
-|------|------|
-| `qwen-turbo` | 速度快，日常对话 |
-| `qwen-plus` | 平衡性能与成本 |
-| `qwen-max` | 最强能力 |
-| `qwen-vl` | 多模态（图像理解） |
-
----
-
-## 四、字节跳动·火山方舟（豆包）
-
-### 1. 注册
-
-1. 访问：https://console.volcengine.com/ark
-2. 使用火山引擎账号登录
-
-### 2. 获取 API Key
-
-1. 进入方舟控制台
-2. 左侧导航进入 **"API 密钥管理"**
-3. 点击 **"创建 API 密钥"**
-4. 命名并配置权限，保存 Secret Key
-
-### 3. 免费额度
-
-- **新用户**：注册享 **50 万 Tokens 免费体验**（安心体验模式）
-- **协作奖励**：可领 **每日 200 万 Tokens**（按天重置）
-
-### 4. 支持模型
-
-| 模型 | 说明 |
-|------|------|
-| 豆包 seed 系列 | 轻量级模型 |
-| 豆包 1.5 系列 | 主力模型 |
-| GLM | 智谱模型 |
-
----
-
-## 五、其他平台
-
-| 平台 | 免费额度 | 获取入口 |
-|------|---------|---------|
-| **百度千帆** | ernie-speed 模型永久免费 | https://qianfan.cloud.baidu.com |
-| **腾讯混元** | 新用户赠 100 万 Tokens | https://cloud.tencent.com/product/hunyuan |
-| **智谱 AI** | 新用户赠免费额度 | https://open.bigmodel.cn |
-
----
-
-## 六、OpenCode 配置（推荐）
-
-OpenCode 内置免费模型，无需配置 API Key 即可使用。
-
-### 安装与启动
+### 安装 Node.js
 
 ```bash
-# 安装
+# Ubuntu/Debian 系统
+sudo apt update && sudo apt install -y nodejs npm
+
+# CentOS/RHEL 系统
+sudo yum install -y nodejs npm
+
+# 没有权限/不想装系统包 → 用 nvm 安装（推荐）
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install 20
+```
+
+验证是否安装成功：
+```bash
+node -v  # 必须 ≥ v18.0.0
+npm -v
+```
+
+---
+
+## 二、安装 OpenCode
+
+```bash
 npm install -g opencode-ai
+```
 
-# 启动
+安装完成后，直接输入 `opencode` 就能启动！
+
+---
+
+## 三、一键配置免费模型
+
+启动后**不用手动填任何 API Key**，直接执行内置指令：
+
+### 1. 启动 OpenCode
+
+```bash
 opencode
+```
 
-# 连接免费模型
+### 2. 连接免费模型池（Zen 模式）
+
+```
 /connect zen
+```
 
-# 查看/切换模型
+### 3. 查看可用免费模型
+
+```
 /models
 ```
 
-### 配置自定义模型（可选）
+你会看到这些**免费可用**的编程模型：
 
-如需使用自己的 API Key，可配置 OpenCode：
+| 模型 | 特点 |
+|------|------|
+| `kimi-k2.5-free` | 长文本、重构、读代码最强 |
+| `glm-4.7-free` / `glm-5-free` | 中文编程首选 |
+| `minimax-m2.7-free` | 速度快 |
+| `gpt-5-nano` | 快速简单任务 |
+
+全部**无密钥、无额度限制、国内直连**。
+
+### 4. 切换模型
+
+```
+/use kimi-k2.5-free
+```
+
+---
+
+## 四、基础使用指令
+
+直接在 OpenCode 终端里输入：
+
+```
+# 查看帮助
+/help
+
+# 查看当前配置
+/config
+
+# 让 AI 读取当前项目所有代码
+/read .
+
+# 让 AI 修改指定文件
+/write main.cpp
+
+# 执行系统命令（Linux 原生）
+! ls -l
+! ./build.sh
+
+# 清空上下文
+/clear
+
+# 退出
+/exit
+```
+
+---
+
+## 五、使用示例
+
+### 辅助开发 MiniOB
+
+```bash
+cd /path/to/miniob_2026
+opencode
+
+# 让 AI 理解项目结构
+> /read .
+
+# 提问
+> 帮我分析 MiniOB 的 SQL 处理流程
+> drop table 的代码在哪里？
+> 帮我实现 drop table 功能
+```
+
+### 代码生成示例
+
+```
+帮我写一个 C++ 函数，实现 B+ 树的插入操作
+```
+
+AI 会直接生成可用的代码。
+
+---
+
+## 六、常见问题
+
+### 1. 安装权限报错
+
+```bash
+# 加 sudo 即可
+sudo npm install -g opencode-ai
+```
+
+### 2. 连接免费模型失败
+
+```
+# 重新连接
+/connect zen
+
+# 或重置配置
+/reset
+```
+
+### 3. 想用自己的 API Key
+
+如需使用 DeepSeek、Kimi 等平台的 API Key：
 
 ```bash
 # 创建配置文件
@@ -224,47 +174,33 @@ cat > ~/.opencode/providers.json << 'EOF'
     "api_key": "sk-你的DeepSeek密钥",
     "base_url": "https://api.deepseek.com/v1",
     "models": ["deepseek-chat", "deepseek-reasoner"]
-  },
-  "kimi": {
-    "api_key": "你的Kimi密钥",
-    "base_url": "https://api.moonshot.cn/v1",
-    "models": ["moonshot-v1-8k", "moonshot-v1-32k"]
   }
 }
 EOF
 ```
 
-启动后用 `/connect deepseek` 或 `/connect kimi` 切换。
+启动后用 `/connect deepseek` 切换。
 
 ---
 
-## 七、常见问题
+## 七、国内平台 API Key 获取（可选）
 
-| 问题 | 解决 |
-|------|------|
-| 免费额度未到账 | 检查是否完成实名认证（身份证+人脸识别） |
-| API Key 忘记了 | 在控制台重新创建新的 Key |
-| 调用失败 | 确认密钥正确、模型名正确、余额充足 |
-| 响应慢 | 切换到其他模型，或调整 `max_tokens` |
-| 额度用完了 | 可充值或等待每日免费额度重置 |
+如需更多额度，可注册以下平台获取免费 API Key：
 
----
-
-## 八、推荐配置
-
-| 场景 | 推荐方案 |
-|------|---------|
-| **零门槛使用** | OpenCode（无需 API Key，开箱即用） |
-| **日常开发** | DeepSeek（免费额度大、价格低） |
-| **长文本分析** | Kimi（支持 128K 上下文） |
-| **多模型切换** | 阿里百炼（Qwen 全系列） |
-| **预算有限** | OpenCode 内置免费模型 + 各平台免费额度 |
+| 平台 | 免费额度 | 注册地址 |
+|------|---------|---------|
+| **DeepSeek** | 500 万 Token（新用户） | https://platform.deepseek.com |
+| **Kimi** | 15 元代金券 | https://platform.moonshot.cn |
+| **阿里百炼** | 7000 万 Token（90天） | https://bailian.console.aliyun.com |
+| **百度千帆** | ernie-speed 永久免费 | https://qianfan.cloud.baidu.com |
 
 ---
 
-## 九、安全提醒
+## 极简总结
 
-1. **实名认证**：国内平台免费额度通常需实名认证，这是领取福利的前提
-2. **密钥安全**：API Key 仅显示一次，务必保存到安全位置
-3. **额度规划**：优先使用免费额度，超出后再按需付费
-4. **不要泄露**：不要将 Key 上传到 GitHub 等公开平台
+1. 安装：`npm install -g opencode-ai`
+2. 启动：`opencode`
+3. 免费模型：`/connect zen`
+4. 直接写代码！
+
+**全程不需要任何平台账号、不需要 API Key、国内直连。**

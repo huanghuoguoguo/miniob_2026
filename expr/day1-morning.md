@@ -35,70 +35,21 @@ wsl --update
 
 ### 1.2 安装 OpenCode AI 工具
 
-OpenCode 是一款开源免费的终端 AI 编程助手，内置多个免费模型，**无需注册、无需 API Key、无需绑卡**，安装后直接就能用。
+OpenCode 是一款开源免费的终端 AI 编程助手，内置多个免费模型，**无需注册、无需 API Key**。
 
-#### 安装步骤
-
-1. 在 WSL Ubuntu 中安装 Node.js：
 ```bash
-# 安装 nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-source ~/.bashrc
+# 安装 Node.js（如果没有）
+sudo apt install -y nodejs npm
 
-# 安装 Node.js 20+
-nvm install 20
-nvm use 20
-```
-
-2. 安装 OpenCode：
-```bash
+# 安装 OpenCode
 npm install -g opencode-ai
-```
 
-3. 启动 OpenCode：
-```bash
-# 进入项目目录
-cd /path/to/miniob_2026
-
-# 启动 OpenCode
+# 启动并连接免费模型
 opencode
-
-# 连接免费模型（Zen 模式）
 /connect zen
-
-# 查看/切换模型
-/models
 ```
 
-#### 内置免费模型
-
-OpenCode 内置多个免费模型，输入 `/models` 即可切换：
-
-| 模型 | 提供商 | 特点 |
-|------|--------|------|
-| `glm-5-free` | 智谱 | 中文编程、代码生成 |
-| `kimi-k2.5-free` | 月之暗面 | 长上下文、代码理解 |
-| `minimax-m2.7-free` | MiniMax | 速度快、代码补全 |
-| `gpt-5-nano` | OpenAI | 快速简单任务 |
-
-#### 使用 OpenCode 辅助开发
-
-```bash
-# 启动 OpenCode
-opencode
-
-# 示例提问
-> 帮我分析 MiniOB 的项目结构
-> 如何编译运行 MiniOB？
-> drop table 的代码在哪里？
-```
-
-**其他 AI 工具推荐**：
-- [千问（通义灵码）](https://tongyi.aliyun.com/) - 阿里云 AI 编程助手
-- [豆包](https://www.doubao.com/) - 字节跳动 AI 助手
-- 可用于辅助理解代码、解答疑问、生成代码片段
-
-> 详细 API Key 获取指南见 [ai-api-keys-guide.md](./ai-api-keys-guide.md)
+详细配置见 [OpenCode 配置指南](./ai-api-keys-guide.md)。
 
 ### 1.3 VSCode 连接 WSL
 
