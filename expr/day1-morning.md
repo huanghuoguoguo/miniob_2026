@@ -33,9 +33,9 @@ wsl --install -d Ubuntu
 wsl --update
 ```
 
-### 1.2 安装 Claude Code AI 工具
+### 1.2 安装 OpenCode AI 工具
 
-Claude Code 是 Anthropic 官方推出的命令行 AI 编程助手，可以辅助开发、调试、阅读代码。
+OpenCode 是一款开源免费的终端 AI 编程助手，内置多个免费模型，**无需注册、无需 API Key、无需绑卡**，安装后直接就能用。
 
 #### 安装步骤
 
@@ -50,51 +50,55 @@ nvm install 20
 nvm use 20
 ```
 
-2. 安装 Claude Code：
+2. 安装 OpenCode：
 ```bash
-npm install -g @anthropic-ai/claude-code
+npm install -g opencode-ai
 ```
 
-3. 配置 Claude Code：
-
-**方式一：直接登录**
-```bash
-claude
-```
-按提示完成 Anthropic 账号登录认证。
-
-**方式二：使用 OpenRouter API Key（推荐，免费额度）**
-
-1. 注册 [OpenRouter](https://openrouter.ai/) 获取 API Key
-2. 在项目目录下创建 `.claude/settings.local.json`：
-```json
-{
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api/v1",
-    "ANTHROPIC_API_KEY": "你的OpenRouter API Key"
-  }
-}
-```
-
-**辅助 AI 工具推荐**：
-- [千问（通义灵码）](https://tongyi.aliyun.com/) - 阿里云 AI 编程助手
-- [豆包](https://www.doubao.com/) - 字节跳动 AI 助手
-- 可用于辅助理解代码、解答疑问、生成代码片段
-
-#### 使用 Claude Code 辅助开发
-
+3. 启动 OpenCode：
 ```bash
 # 进入项目目录
 cd /path/to/miniob_2026
 
-# 启动 Claude Code
-claude
+# 启动 OpenCode
+opencode
+
+# 连接免费模型（Zen 模式）
+/connect zen
+
+# 查看/切换模型
+/models
+```
+
+#### 内置免费模型
+
+OpenCode 内置多个免费模型，输入 `/models` 即可切换：
+
+| 模型 | 提供商 | 特点 |
+|------|--------|------|
+| `glm-5-free` | 智谱 | 中文编程、代码生成 |
+| `kimi-k2.5-free` | 月之暗面 | 长上下文、代码理解 |
+| `minimax-m2.7-free` | MiniMax | 速度快、代码补全 |
+| `gpt-5-nano` | OpenAI | 快速简单任务 |
+
+#### 使用 OpenCode 辅助开发
+
+```bash
+# 启动 OpenCode
+opencode
 
 # 示例提问
 > 帮我分析 MiniOB 的项目结构
 > 如何编译运行 MiniOB？
 > drop table 的代码在哪里？
 ```
+
+**其他 AI 工具推荐**：
+- [千问（通义灵码）](https://tongyi.aliyun.com/) - 阿里云 AI 编程助手
+- [豆包](https://www.doubao.com/) - 字节跳动 AI 助手
+- 可用于辅助理解代码、解答疑问、生成代码片段
+
+> 详细 API Key 获取指南见 [ai-api-keys-guide.md](./ai-api-keys-guide.md)
 
 ### 1.3 VSCode 连接 WSL
 
@@ -110,7 +114,7 @@ claude
 
 ### 1.4 MiniOB 环境配置与编译
 
-> **提示**：如果已配置好 Claude Code 工具，可以直接让 AI 辅助完成环境配置：
+> **提示**：如果已配置好 OpenCode 工具，可以直接让 AI 辅助完成环境配置：
 > ```
 > > 帮我安装 MiniOB 所需的依赖并编译项目
 > ```
@@ -170,7 +174,7 @@ make -j4
 
 #### 使用 AI 辅助排查问题
 
-如果编译或运行遇到问题，可以直接向 Claude Code 描述问题：
+如果编译或运行遇到问题，可以直接向 OpenCode 描述问题：
 
 ```bash
 > 编译报错了：[粘贴错误信息]
