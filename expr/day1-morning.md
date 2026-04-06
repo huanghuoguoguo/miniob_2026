@@ -49,7 +49,7 @@ opencode
 /connect zen
 ```
 
-详细配置见 [OpenCode 配置指南](./ai-api-keys-guide.md)。
+详细配置见 [AI IDE/CLI 配置指南](./ai-ide-cli-setup.md)。
 
 ### 1.3 VSCode 连接 WSL
 

@@ -86,7 +86,7 @@ MiniOB 中 B+树、Record Manager、Buffer Pool 等模块已完成基本实现�
 ### AI 辅助开发工具
 - 学习 OpenCode 等 AI 编程助手的使用
 - 能够利用 AI 工具辅助解决开发过程中遇到的问题
-- 参考 [OpenCode 配置指南](./ai-api-keys-guide.md)，零门槛使用免费模型
+- 参考 [AI IDE/CLI 配置指南](./ai-ide-cli-setup.md)，零门槛使用免费模型
 
 ---
 

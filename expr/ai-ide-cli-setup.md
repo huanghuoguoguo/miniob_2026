@@ -1,4 +1,4 @@
-# OpenCode 配置指南（零 API Key、免费模型直连）
+# AI IDE/CLI 配置指南
 
 > 本文档介绍如何配置 OpenCode，一款开源免费的终端 AI 编程助手。
 >
