@@ -190,41 +190,51 @@ response = client.chat.completions.create(
 
 ---
 
-## 六、Claude Code 配置国内模型
+## 六、OpenCode 配置（推荐）
 
-### 方案：使用 CCR 路由器
+OpenCode 内置免费模型，无需配置 API Key 即可使用。
+
+### 安装与启动
 
 ```bash
 # 安装
-npm install -g @anthropic-ai/claude-code
-npm install -g @musistudio/claude-code-router
+npm install -g opencode-ai
 
-# 创建配置目录
-mkdir -p ~/.claude-code-router
+# 启动
+opencode
 
-# 写入配置
-cat > ~/.claude-code-router/config.json << 'EOF'
+# 连接免费模型
+/connect zen
+
+# 查看/切换模型
+/models
+```
+
+### 配置自定义模型（可选）
+
+如需使用自己的 API Key，可配置 OpenCode：
+
+```bash
+# 创建配置文件
+mkdir -p ~/.opencode
+
+cat > ~/.opencode/providers.json << 'EOF'
 {
-  "Providers": [
-    {
-      "name": "deepseek",
-      "api_base_url": "https://api.deepseek.com/v1/chat/completions",
-      "api_key": "sk-你的DeepSeek密钥",
-      "models": ["deepseek-chat", "deepseek-reasoner"],
-      "transformer": { "use": ["openai"] }
-    }
-  ],
-  "Router": {
-    "default": "deepseek,deepseek-chat"
+  "deepseek": {
+    "api_key": "sk-你的DeepSeek密钥",
+    "base_url": "https://api.deepseek.com/v1",
+    "models": ["deepseek-chat", "deepseek-reasoner"]
+  },
+  "kimi": {
+    "api_key": "你的Kimi密钥",
+    "base_url": "https://api.moonshot.cn/v1",
+    "models": ["moonshot-v1-8k", "moonshot-v1-32k"]
   }
 }
 EOF
-
-# 启动
-ccr code
 ```
 
-启动后用 `/model` 切换模型。
+启动后用 `/connect deepseek` 或 `/connect kimi` 切换。
 
 ---
 
@@ -244,10 +254,11 @@ ccr code
 
 | 场景 | 推荐方案 |
 |------|---------|
+| **零门槛使用** | OpenCode（无需 API Key，开箱即用） |
 | **日常开发** | DeepSeek（免费额度大、价格低） |
 | **长文本分析** | Kimi（支持 128K 上下文） |
 | **多模型切换** | 阿里百炼（Qwen 全系列） |
-| **预算有限** | 各平台免费额度轮流使用 |
+| **预算有限** | OpenCode 内置免费模型 + 各平台免费额度 |
 
 ---
 
