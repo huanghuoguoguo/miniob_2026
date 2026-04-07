@@ -169,14 +169,14 @@ string get(string& key) {
 
 当前 `map` 仅工作在内存中。当程序关闭后，内存中的数据都会消失。作为一个数据库，是否应该有数据持久化的功能？
 
-> **思考**：存储层次结构（操作系统知识）
+> 存储层次结构（操作系统知识）
 > - CPU 高速缓存：ns 级速度，MB 级容量，易失性
 > - 内存（RAM）：较快，GB 级容量，易失性
 > - 磁盘：慢，TB 级容量，非易失性（持久化）
-> 
+>
 > 数据库需要在"速度快的易失性介质"和"持久性介质"之间找到平衡。
 
-解决方案：引入**序列化和转储**功能，将数据保存到磁盘。
+怎么解决？引入序列化和转储功能，将数据保存到磁盘。
 
 **问题 2：条件查询**
 
@@ -184,72 +184,19 @@ string get(string& key) {
 
 当前 `map` 只能根据 key 查询。如果要根据 value 查询，需要遍历整个数据集，效率是 O(n)。
 
-解决方案：引入**索引**（空间换时间）。
-
-> **Trade-off 思考**：
-> - 索引占用额外空间，但能加速查询（从 O(n) 到 O(log n)）
-> - 这是典型的"空间换时间"策略
+怎么解决？引入索引——为售价字段单独建立一个映射。索引虽然占用额外空间，但能将查询效率从 O(n) 提升到 O(log n)，这是典型的"空间换时间"策略。
 
 **问题 3：如何与磁盘打交道？**
 
-既然要持久化数据到磁盘，我们面临一个关键问题：**程序如何读写磁盘上的文件？**
+既然要持久化数据到磁盘，我们面临一个关键问题：程序如何读写磁盘上的文件？
 
-你可能已经用过 `read()` 和 `write()` 系统调用。但先思考几个问题：
+你可能用过 `read()` 和 `write()` 系统调用。一个 10GB 的电影文件，你的内存只有 8GB，为什么能正常播放？
 
-1. **`read()` 会把整个文件载入内存吗？** 不会。它只读取指定字节数。
-2. **`lseek()` 是什么作用？** 移动文件指针，实现按需读取指定位置。
-3. **一个 10GB 的电影文件，你的内存只有 8GB，为什么能正常播放？**
+答案是操作系统帮你做了缓存——Page Cache。当你调用 `read()` 时，操作系统不会每次都直接读磁盘，而是先检查内存中有没有缓存这一页数据。`write()` 同理，先写入内存中的 Page Cache，由操作系统择机刷回磁盘。
 
-答案在于：**Page Cache（页缓存）**。
+那数据库为什么不直接用 Page Cache，而要自己实现 Buffer Pool？
 
-#### Page Cache：操作系统层的"缓冲池"
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      用户程序                                │
-│                    read() / write()                          │
-└─────────────────────────────────────────────────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────┐
-│                    Page Cache                                │
-│              （内存中，通常几 GB）                             │
-│   ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐                  │
-│   │Page │ │Page │ │Page │ │Page │ │Page │ ...              │
-│   │ 4KB │ │ 4KB │ │ 4KB │ │ 4KB │ │ 4KB │                  │
-│   └─────┘ └─────┘ └─────┘ └─────┘ └─────┘                  │
-└─────────────────────────────────────────────────────────────┘
-                              ↕
-┌─────────────────────────────────────────────────────────────┐
-│                       磁盘                                   │
-│                    （文件系统）                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**工作原理**：
-
-1. 当你调用 `read()` 时，操作系统不会每次都直接读磁盘
-2. 先检查 Page Cache 中有没有这一页（4KB）
-3. 如果有（缓存命中），直接从内存返回，速度极快
-4. 如果没有（缓存未命中），从磁盘读取该页到 Page Cache，再返回给你
-5. `write()` 同理——先写入 Page Cache，由操作系统择机刷回磁盘
-
-**这就是为什么 10GB 的电影能在 8GB 内存的电脑上播放**：操作系统按需加载当前播放位置附近的几页到 Page Cache，播完就换下一页。
-
-> **思考**：Page Cache 是操作系统帮你管理的。那数据库为什么要自己实现 Buffer Pool？
->
-> 提示：数据库需要更精细的控制——何时刷盘、如何保证事务持久性、如何实现预读策略...
-
-#### 不同的文件 I/O 方式
-
-| 方式 | 特点 | 适用场景 |
-|------|------|----------|
-| `read()` / `write()` | 标准系统调用，经过 Page Cache | 通用文件读写 |
-| `mmap()` | 将文件映射到内存地址空间，像访问数组一样访问文件 | 随机访问、共享内存 |
-| `O_DIRECT` | 绕过 Page Cache，直接读写磁盘 | 数据库、高性能 I/O |
-
-> **问题**：MiniOB 用的是哪种方式？为什么要这样选择？
-
-我们将在 Buffer Pool 模块深入讨论这个问题。
+这是一个好问题，我们放到后面专门讲 Buffer Pool 的时候再展开。现在只需要知道：操作系统提供了基础的缓存机制，但数据库需要更精细的控制。
 
 ### 2.2 目录结构概览
 
@@ -316,7 +263,7 @@ SQL 字符串
 
 #### SEDA 框架与事件流转
 
-MiniOB 使用 **SEDA（Staged Event-Driven Architecture）** 框架来组织各个处理阶段：
+MiniOB 使用 SEDA（Staged Event-Driven Architecture）框架来组织各个处理阶段：
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -331,24 +278,22 @@ MiniOB 使用 **SEDA（Staged Event-Driven Architecture）** 框架来组织各�
 ```
 
 每个 Stage 对应一个处理阶段：
-- **SessionStage**：接收网络请求，创建 SessionEvent
-- **ParseStage**：词法+语法解析，输出 ParsedSqlNode
-- **ResolveStage**：语义分析，创建 Statement
-- **ExecuteStage**：执行 SQL
+- SessionStage：接收网络请求，创建 SessionEvent
+- ParseStage：词法+语法解析，输出 ParsedSqlNode
+- ResolveStage：语义分析，创建 Statement
+- ExecuteStage：执行 SQL
 
-> **思考**：为什么用事件驱动？
+> 为什么用事件驱动？
 > - 解耦各个处理阶段
 > - 支持线程池复用
 > - 便于扩展新的处理阶段
-
-#### DDL vs DML
 
 SQL 语句分为两类：
 
 | 类型 | 说明 | MiniOB 处理路径 |
 |------|------|-----------------|
-| **DDL**（Data Definition Language） | CREATE/DROP TABLE, CREATE INDEX | 直接进入 Executor 执行 |
-| **DML**（Data Manipulation Language） | SELECT/INSERT/UPDATE/DELETE | 进入优化器生成算子树 |
+| DDL（Data Definition Language） | CREATE/DROP TABLE, CREATE INDEX | 直接进入 Executor 执行 |
+| DML（Data Manipulation Language） | SELECT/INSERT/UPDATE/DELETE | 进入优化器生成算子树 |
 
 #### 数据类型（DataType）
 
@@ -363,9 +308,9 @@ class DataType {
 };
 ```
 
-已定义的类型：`int`、`float`、`char`、`text` 等。
+已定义的类型：int、float、char、text 等。
 
-> **面向对象思想**：将基本数据类型包装成类，提供统一的操作接口。这种做法在数据处理项目中很常见。
+> 面向对象思想：将基本数据类型包装成类，提供统一的操作接口。这种做法在数据处理项目中很常见。
 
 #### 表达式（Expression）
 
@@ -385,7 +330,7 @@ SELECT c1 + c2 FROM t1 WHERE c1 > 10
   c1  10
 ```
 
-表达式类型：`ValueExpr`、`FieldExpr`、`ArithmeticExpr` 等。
+表达式类型：ValueExpr、FieldExpr、ArithmeticExpr 等。
 
 #### Tuple（行）
 
@@ -425,9 +370,9 @@ MiniOB 项目已配置好 VSCode 调试环境（`.vscode/launch.json`），可�
 
 | 插件 | 作用 |
 |------|------|
-| **C/C++** (Microsoft) | C++ 语法支持、调试支持 |
-| **C/C++ Extension Pack** | 包含 C/C++ 相关工具集 |
-| **CodeLLDB** (可选) | macOS/Linux 下更流畅的调试体验 |
+| C/C++ (Microsoft) | C++ 语法支持、调试支持 |
+| C/C++ Extension Pack | 包含 C/C++ 相关工具集 |
+| CodeLLDB (可选) | macOS/Linux 下更流畅的调试体验 |
 
 #### 启动调试
 
@@ -436,15 +381,15 @@ MiniOB 项目已配置好 VSCode 调试环境（`.vscode/launch.json`），可�
 3. 选择 "Debug" 配置（使用 cppdbg）或 "LLDB" 配置
 
 调试配置说明（`.vscode/launch.json`）：
-- **程序**：`build/bin/observer`
-- **参数**：`-f etc/observer.ini -P cli`（CLI 模式，单线程，方便调试）
-- **工作目录**：`build/`
+- 程序：`build/bin/observer`
+- 参数：`-f etc/observer.ini -P cli`（CLI 模式，单线程，方便调试）
+- 工作目录：`build/`
 
 #### 调试模式下输入 SQL
 
-在 CLI 模式下调试时，SQL 输入会出现在 VSCode 的**调试控制台**（Debug Console）中。
+在 CLI 模式下调试时，SQL 输入会出现在 VSCode 的调试控制台（Debug Console）中。
 
-> **提示**：如果想在交互式终端中输入 SQL，可以在终端手动运行 `./bin/observer -f ../etc/observer.ini -P cli`，然后在另一个终端用 `./bin/obclient` 连接。
+> 如果想在交互式终端中输入 SQL，可以在终端手动运行 `./bin/observer -f ../etc/observer.ini -P cli`，然后在另一个终端用 `./bin/obclient` 连接。
 
 ### 3.2 SQL 处理完整流程
 
@@ -579,19 +524,19 @@ MiniOB 使用火山模型（Volcano Model）执行查询：
 
 ## 四、Drop Table 实现
 
-> **学习目标**：通过实现 `DROP TABLE` 语句，理解 SQL 语句的完整处理流程，以及数据库如何管理磁盘文件。
+通过实现 `DROP TABLE` 语句，理解 SQL 语句的完整处理流程，以及数据库如何管理磁盘文件。
 
 ### 4.1 从调试 CREATE TABLE 到实现 DROP TABLE
 
 在上一节调试 CREATE TABLE 时，你应该观察到：
 
-1. **代码路径**：Parser → Stmt → Executor → Db::create_table()
-2. **创建的文件**：`xxx.table`、`xxx.data`、`xxx.lob`
-3. **内存变化**：表名被加入 `opened_tables_` 映射
+1. 代码路径：Parser → Stmt → Executor → Db::create_table()
+2. 创建的文件：xxx.table、xxx.data、xxx.lob
+3. 内存变化：表名被加入 `opened_tables_` 映射
 
 现在要实现 DROP TABLE，你觉得需要做什么？
 
-> **思考**：CREATE 和 DROP 是一对相反的操作。如果 CREATE 是"创建"，那 DROP 就是"销毁"。
+> CREATE 和 DROP 是一对相反的操作。如果 CREATE 是创建，那 DROP 就是销毁。
 >
 > | 操作 | CREATE TABLE | DROP TABLE |
 > |------|--------------|------------|
@@ -622,9 +567,9 @@ miniob/db/sys/
 └── users.lob       # 大对象数据（TEXT 类型等）
 ```
 
-> **课外知识**：当你执行 `rm large_file.txt` 时，为什么瞬间就完成了？
+> 课外知识：当你执行 `rm large_file.txt` 时，为什么瞬间就完成了？
 >
-> 答案：`rm` 只是删除了文件目录项（directory entry），标记 inode 为可回收。实际的数据块并没有被擦除，只是变成了"空闲空间"。
+> 答案：`rm` 只是删除了文件目录项（directory entry），标记 inode 为可回收。实际的数据块并没有被擦除，只是变成了空闲空间。
 >
 > 这就是为什么删除大文件很快，恢复删除的文件有时可行——数据还在磁盘上，只是找不到入口了。
 
@@ -656,13 +601,11 @@ DROP TABLE users
 
 ### 4.3 实现步骤一：DropTableStmt
 
-#### 为什么需要 Stmt？
-
-Parser 输出的是 `ParsedSqlNode`，这是一个"语法树节点"。但语法树只是记录了 SQL 的结构，还没有进行语义检查。
+Parser 输出的是 ParsedSqlNode，这是一个语法树节点。但语法树只是记录了 SQL 的结构，还没有进行语义检查。
 
 比如：要删除的表是否存在？当前数据库是否有效？
 
-这些检查在 **Stmt 创建阶段** 进行。
+这些检查在 Stmt 创建阶段进行。
 
 #### DropTableStmt 类定义
 
@@ -694,7 +637,7 @@ private:
 
 这个类很简单，只保存了表名。为什么这么简单？
 
-> **思考**：CREATE TABLE 需要保存字段列表、字段类型等信息。而 DROP TABLE 只需要知道"删哪个表"，所以只需要表名。
+> CREATE TABLE 需要保存字段列表、字段类型等信息。而 DROP TABLE 只需要知道删哪个表，所以只需要表名。
 
 #### DropTableStmt 创建函数
 
@@ -713,7 +656,7 @@ RC DropTableStmt::create(Db *db, const DropTableSqlNode &drop_table, Stmt *&stmt
 }
 ```
 
-> **设计决策**：表是否存在，是在 Stmt 阶段检查，还是在 Executor 阶段检查？
+> 设计决策：表是否存在，是在 Stmt 阶段检查，还是在 Executor 阶段检查？
 >
 > 两种方式都可以。MiniOB 倾向于在 Stmt 阶段做基本检查（如表名是否合法），执行阶段做实际操作检查（如表是否存在）。
 
@@ -822,9 +765,9 @@ RC Db::drop_table(const char *table_name)
 
 **步骤 4：对象销毁**
 
-`delete table` 会触发 `Table` 析构函数，关闭可能持有的文件句柄、释放缓冲区。
+`delete table` 会触发 Table 析构函数，关闭可能持有的文件句柄、释放缓冲区。
 
-> **为什么先 delete table 再删文件？**
+> 为什么先 delete table 再删文件？
 >
 > 想象一下：如果先删了文件，但 Table 对象还持有文件句柄，会发生什么？
 > - Linux 允许删除已打开的文件，文件引用计数归零后才会真正删除
