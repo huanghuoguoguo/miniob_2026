@@ -200,152 +200,305 @@ CREATE INDEX idx_name ON table_name(col)
 
 ## 四、多列索引实现
 
-### 4.1 当前状态
+### 4.1 从调试单列索引开始
 
-MiniOB 目前**只支持单列索引**。
+在实现多列索引之前，先调试一下单列索引的创建流程。
 
-关键代码注释（`bplus_tree.h:167`）：
-> "only one field can be supported, can you extend it to multi-fields?"
+#### 调试任务
 
-### 4.2 什么是多列索引？
-
-多列索引（复合索引）是在多个字段上创建的索引：
-
+1. 创建一个表和索引：
 ```sql
--- 单列索引
+CREATE TABLE users(id int, name char(20), age int);
 CREATE INDEX idx_name ON users(name);
-
--- 多列索引
-CREATE INDEX idx_name_age ON users(name, age);
 ```
 
-多列索引的键是**字段组合**，如 `(name, age)`。
+2. 在以下位置打断点：
+   - `stmt/create_index_stmt.cpp:24` — 创建语句
+   - `executor/create_index_executor.cpp:23` — 执行入口
+   - `storage/index/bplus_tree_index.cpp:30` — B+树创建
 
-**适用场景**：
-- 查询条件涉及多个字段：`WHERE name='Alice' AND age=25`
-- 排序涉及多个字段：`ORDER BY name, age`
+3. 观察以下问题：
+   - `CreateIndexSqlNode` 中的 `attribute_name` 是什么？
+   - `IndexMeta` 中存储了什么信息？
+   - B+树的 `key_length` 是怎么确定的？
 
-### 4.3 需要修改的关键位置
+#### 你应该观察到的
 
-#### 1. 语法解析（yacc_sql.y）
-
-当前语法：
-```yacc
-create_index_stmt:
-    CREATE INDEX ID ON ID LBRACE ID RBRACE
-```
-
-需要改为支持多字段列表：
-```yacc
-create_index_stmt:
-    CREATE INDEX ID ON ID LBRACE index_attr_list RBRACE
-
-index_attr_list:
-    ID
-    | index_attr_list COMMA ID
-```
-
-**文件**：`src/observer/sql/parser/yacc_sql.y`（第305行附近）
-
-#### 2. SQL节点结构（parse_defs.h）
-
-当前：
 ```cpp
-struct CreateIndexSqlNode {
-  string index_name;
-  string relation_name;
-  string attribute_name;  // 单字段
-};
+// create_index_stmt.cpp 中
+const char *field_name = create_index.attribute_name.c_str();
+// 单列索引：只有一个字段名 "name"
 ```
 
-需要改为：
 ```cpp
-struct CreateIndexSqlNode {
-  string index_name;
-  string relation_name;
-  vector<string> attribute_names;  // 多字段
-};
-```
-
-**文件**：`src/observer/sql/parser/parse_defs.h`（第190行）
-
-#### 3. 索引元数据（index_meta.h）
-
-当前：
-```cpp
+// index_meta.h 中
 class IndexMeta {
-private:
-  string field_;  // 单字段
+  string name_;    // "idx_name"
+  string field_;   // "name" ← 只有这一个字段
 };
 ```
 
-需要改为：
 ```cpp
-class IndexMeta {
-private:
-  vector<string> fields_;  // 多字段
-};
-```
-
-**文件**：`src/observer/storage/index/index_meta.h`
-
-#### 4. B+树比较器（bplus_tree.h）
-
-当前的 `AttrComparator` 和 `KeyComparator` 只支持单字段比较。
-
-需要扩展为支持多字段组合比较：
-
-```cpp
-// 比较逻辑示例
-int compare(const vector<Value> &left, const vector<Value> &right) {
-  for (size_t i = 0; i < left.size(); i++) {
-    int cmp = compare_value(left[i], right[i]);
-    if (cmp != 0) return cmp;
-  }
-  return 0;  // 所有字段都相等
+// bplus_tree_index.cpp 中
+RC BplusTreeIndex::create(..., const FieldMeta &field_meta) {
+  // field_meta.len() = 20 (char(20) 的长度)
+  // 这个长度决定了 B+树键的大小
 }
 ```
 
-**文件**：`src/observer/storage/index/bplus_tree.h`
+### 4.2 提出问题：如果要支持多列呢？
 
-#### 5. 文件头元数据（IndexFileHeader）
+现在思考：如果要支持 `CREATE INDEX idx_name_age ON users(name, age);`，需要改什么？
 
-需要支持多字段的类型和长度信息：
+#### 问题 1：解析层
+
+SQL 中有多个字段名，但 `CreateIndexSqlNode` 只有一个 `attribute_name`：
 
 ```cpp
-struct IndexFileHeader {
-  // 当前
-  AttrType attr_type;
-  int      attr_length;
-  
-  // 需要改为
-  vector<AttrType> attr_types;
-  vector<int>      attr_lengths;
-  int              total_key_length;  // 总键长度
+// 当前
+struct CreateIndexSqlNode {
+  string attribute_name;  // 只能存一个
 };
 ```
 
-**文件**：`src/observer/storage/index/bplus_tree.h`
+**结论**：需要改成 `vector<string> attribute_names;`
 
-### 4.4 实现思路
+#### 问题 2：元数据层
 
-实现多列索引需要修改以下层次：
+`IndexMeta` 只存一个字段名：
 
-| 层次 | 修改内容 |
-|------|----------|
-| **语法解析** | yacc 规则支持多字段列表 |
-| **SQL节点** | CreateIndexSqlNode 改为 vector |
-| **Statement** | CreateIndexStmt 支持多字段验证 |
-| **索引元数据** | IndexMeta 存储多字段信息 |
-| **B+树文件头** | 存储多字段类型和长度 |
-| **比较器** | 支持多字段组合比较 |
+```cpp
+// 当前
+class IndexMeta {
+  string field_;  // 只能存一个
+};
+```
 
-### 4.5 调试建议
+**结论**：需要改成 `vector<string> fields_;`
 
-1. 先修改语法解析，确保能解析多字段语法
-2. 使用 `EXPLAIN` 命令观察生成的语句结构
-3. 在 `CreateIndexStmt::create()` 打断点，验证字段列表
-4. 在 `BplusTreeHandler::create()` 打断点，观察索引文件创建
+#### 问题 3：B+树键的长度
+
+单列索引的键长度 = 字段长度。多列索引呢？
+
+```
+name(char(20)) + age(int) = 20 + 4 = 24 字节
+```
+
+**结论**：需要计算所有字段长度之和。
+
+#### 问题 4：键的比较逻辑
+
+单列索引比较很简单：`name1 < name2`。
+
+多列索引怎么比较 `(name1, age1)` 和 `(name2, age2)`？
+
+```
+先比较 name：
+  - name1 < name2 → (name1, age1) < (name2, age2)
+  - name1 > name2 → (name1, age1) > (name2, age2)
+  - name1 == name2 → 再比较 age
+```
+
+这叫**字典序比较**，类似查字典：先看第一个字母，相同再看第二个。
+
+### 4.3 实现步骤
+
+理解了要改什么，现在开始实现。
+
+#### 步骤 1：修改语法解析
+
+**文件**：`src/observer/sql/parser/yacc_sql.y`
+
+原来只支持单个字段：
+```yacc
+create_index_stmt:
+    CREATE INDEX ID ON ID LBRACE ID RBRACE
+    {
+      $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
+      $$->create_index.attribute_name = $7;  // 单个字段
+    }
+```
+
+改为支持字段列表：
+```yacc
+create_index_stmt:
+    CREATE INDEX ID ON ID LBRACE rel_attr_list RBRACE
+    {
+      $$ = new ParsedSqlNode(SCF_CREATE_INDEX);
+      $$->create_index.index_name = $3;
+      $$->create_index.relation_name = $5;
+      // rel_attr_list 已经是一个 vector
+      for (auto &attr : *$7) {
+        $$->create_index.attribute_names.push_back(attr.attribute_name);
+      }
+      delete $7;
+    }
+```
+
+#### 步骤 2：修改 SQL 节点结构
+
+**文件**：`src/observer/sql/parser/parse_defs.h`
+
+```cpp
+struct CreateIndexSqlNode
+{
+  string index_name;
+  string relation_name;
+  vector<string> attribute_names;  // 改为多个字段
+};
+```
+
+#### 步骤 3：修改 Statement
+
+**文件**：`src/observer/sql/stmt/create_index_stmt.h`
+
+```cpp
+class CreateIndexStmt : public Stmt
+{
+public:
+  // 单列：const FieldMeta *field_meta() const;
+  // 多列：
+  const vector<const FieldMeta *> &field_metas() const { return field_metas_; }
+
+private:
+  vector<const FieldMeta *> field_metas_;  // 多个字段的元数据
+};
+```
+
+**create_index_stmt.cpp** 中需要验证所有字段都存在：
+
+```cpp
+RC CreateIndexStmt::create(Db *db, const CreateIndexSqlNode &create_index, Stmt *&stmt)
+{
+  Table *table = db->find_table(create_index.relation_name.c_str());
+  
+  vector<const FieldMeta *> field_metas;
+  for (const string &attr_name : create_index.attribute_names) {
+    const FieldMeta *field_meta = table->table_meta().field(attr_name.c_str());
+    if (nullptr == field_meta) {
+      LOG_WARN("Field not exists: %s", attr_name.c_str());
+      return RC::SCHEMA_FIELD_MISSING;
+    }
+    field_metas.push_back(field_meta);
+  }
+  
+  stmt = new CreateIndexStmt(table, field_metas, create_index.index_name);
+  return RC::SUCCESS;
+}
+```
+
+#### 步骤 4：修改索引元数据
+
+**文件**：`src/observer/storage/index/index_meta.h`
+
+```cpp
+class IndexMeta
+{
+public:
+  const vector<string> &fields() const { return fields_; }
+  int field_num() const { return fields_.size(); }
+  
+  // 初始化多列索引
+  RC init(const char *name, const vector<const FieldMeta *> &fields);
+
+private:
+  string name_;
+  vector<string> fields_;  // 多个字段名
+};
+```
+
+#### 步骤 5：修改 B+树创建
+
+**文件**：`src/observer/storage/index/bplus_tree_index.cpp`
+
+```cpp
+RC BplusTreeIndex::create(
+    Table *table,
+    const char *file_name,
+    const IndexMeta &index_meta,
+    const vector<const FieldMeta *> &field_metas)
+{
+  // 计算组合键的总长度
+  int total_key_length = 0;
+  for (const FieldMeta *field : field_metas) {
+    total_key_length += field->len();
+  }
+
+  // 创建 B+树，键长度 = 所有字段长度之和
+  RC rc = index_handler_.create(
+      table->db()->log_handler(),
+      bpm,
+      file_name,
+      field_metas[0]->type(),  // 暂时用第一个字段类型
+      total_key_length);       // 总键长度
+  ...
+}
+```
+
+### 4.4 完整调用链
+
+```
+CREATE INDEX idx_name_age ON users(name, age)
+              ↓
+yacc_sql.y: 解析为 attribute_names = ["name", "age"]
+              ↓
+CreateIndexStmt::create():
+  验证 name 和 age 字段存在
+  获取 FieldMeta 列表
+              ↓
+CreateIndexExecutor::execute():
+  调用 table->create_index()
+              ↓
+HeapTableEngine::create_index():
+  创建 IndexMeta(fields = ["name", "age"])
+  创建 BplusTreeIndex
+  计算键长度 = 20 + 4 = 24
+              ↓
+BplusTreeHandler::create():
+  创建索引文件，键长度 24 字节
+```
+
+### 4.5 关键概念：最左前缀原则
+
+多列索引有一个重要特性：**最左前缀原则**。
+
+```sql
+-- 索引 (name, age)
+CREATE INDEX idx_name_age ON users(name, age);
+
+-- 能使用索引的查询：
+WHERE name = 'Alice'                    ✓
+WHERE name = 'Alice' AND age = 25       ✓
+WHERE age = 25                          ✗ （不包含最左字段）
+```
+
+**原因**：多列索引按键的字典序组织。索引先按 name 排序，name 相同时再按 age 排序。
+
+```
+(name, age) 索引中数据顺序：
+('Alice', 20)
+('Alice', 25)
+('Bob', 20)
+('Bob', 30)
+('Carol', 25)
+```
+
+如果你查 `WHERE age = 25`，数据库无法定位——因为 age=25 的记录分散在各处。
+
+> **Trade-off 思考**：
+> - 多列索引 `(name, age)` vs 两个单列索引 `idx_name` + `idx_age`？
+> - 多列索引：一个索引文件，查询效率高
+> - 多个单列索引：可以灵活组合，但可能需要"索引合并"
+
+### 4.6 实践任务
+
+1. 在 `feature/multi-column-index` 分支查看完整实现
+2. 自己在新分支重新实现一遍
+3. 测试：
+   - `CREATE INDEX idx_name_age ON users(name, age);`
+   - `INSERT INTO users VALUES(1, 'Alice', 25);`
+   - `SELECT * FROM users WHERE name='Alice';` — 应该命中索引
+4. 思考：如何验证查询是否使用了索引？
 
 ---
 
