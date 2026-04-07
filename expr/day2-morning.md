@@ -224,92 +224,112 @@ INSERT INTO users VALUES(1, 'Alice', 25)
 
 ## 四、Text 类型实现
 
-### 4.1 为什么需要 Text 类型？
+### 4.1 从调试 CHARS 类型开始
 
-现有的 `CHARS` 类型是**定长字符串**：
+在实现 TEXT 类型之前，先观察一下现有的 CHARS 类型是如何工作的。
 
+#### 调试任务
+
+1. 创建一个带 CHARS 字段的表：
 ```sql
-CREATE TABLE users(
-  id int,
-  name char(20),    -- 固定 20 字节，不足补空格
-  intro char(100)   -- 固定 100 字节
-);
+CREATE TABLE users(id int, name char(20));
+INSERT INTO users VALUES(1, 'Alice');
+SELECT * FROM users;
 ```
 
-**问题**：
+2. 在以下位置打断点：
+   - `common/type/char_type.cpp` — CHARS 类型操作
+   - `storage/table/table.cpp` 的 `make_record()` — 记录构造
 
-1. **空间浪费**：简介可能只有 10 字节，却分配了 100 字节
-2. **长度限制**：想要存储文章内容（可能几 KB），char 不够用
-3. **灵活性差**：长度需要在建表时确定
+3. 观察问题：
+   - `name char(20)` 分配了多少字节？
+   - 插入 "Alice"（5字符）后，剩余 15 字节存储了什么？
+   - 如果插入 "A very very long name that exceeds 20 chars" 会怎样？
 
-**TEXT 类型**解决这些问题：
+#### 你应该观察到的
+
+```cpp
+// char_type.cpp 中
+// char(20) 固定分配 20 字节
+// "Alice" 只有 5 字节，剩余 15 字节填充空格或 '\0'
+```
+
+**CHARS 的问题**：
+
+| 场景 | 问题 |
+|------|------|
+| 存储短字符串 | 空间浪费（20字节只用了5字节） |
+| 存储长字符串 | 存不下（超过长度限制会报错或截断） |
+| 存储文章内容 | char 最大只能定义有限长度 |
+
+### 4.2 提出问题：如何支持变长文本？
+
+思考：如果要存储一篇博客文章（可能几千字），该怎么办？
+
+#### 方案一：加大 char 长度？
 
 ```sql
 CREATE TABLE articles(
   id int,
-  title char(100),
-  content text    -- 变长，最大 65535 字节
+  content char(10000)  -- 问题：每条记录都占 10KB，即使内容很短
 );
 ```
 
-### 4.2 Text 与 Char 的区别
+**问题**：空间浪费严重。
 
-| 特性 | CHARS | TEXT |
-|------|-------|------|
-| 存储方式 | 定长，页面内存储 | 变长，可能溢出到 LOB 文件 |
-| 最大长度 | 建表时指定 | 65535 字节 |
-| 空间效率 | 可能浪费 | 按需分配 |
-| 适用场景 | 短文本（姓名、电话） | 长文本（文章、日志） |
+#### 方案二：变长存储
 
-### 4.3 实现思路
-
-#### 短文本优化
-
-对于短文本（如 ≤12 字节），直接内联存储，避免额外内存分配：
-
-```
-┌─────────────────────────────────┐
-│  string_t 结构                   │
-├─────────────────────────────────┤
-│  长度 ≤ 12 字节：                 │
-│  ┌─────────────────────────┐    │
-│  │ data[12] (内联存储)      │    │
-│  └─────────────────────────┘    │
-│                                 │
-│  长度 > 12 字节：                 │
-│  ┌─────────────────────────┐    │
-│  │ pointer (指向堆内存)     │    │
-│  │ length                  │    │
-│  └─────────────────────────┘    │
-└─────────────────────────────────┘
+```sql
+CREATE TABLE articles(
+  id int,
+  content text  -- 按实际长度存储
+);
 ```
 
-#### 长文本存储
+**实现思路**：
+- 短文本：直接存在记录中（内联）
+- 长文本：存到单独的 LOB 文件，记录中只存指针
 
-对于超长文本，使用 **LOB（Large Object）** 存储：
+### 4.3 TEXT 类型的存储策略
+
+MiniOB 使用**混合策略**优化 TEXT 存储：
 
 ```
-┌──────────────────────────────────────────────────┐
-│                   数据页面                         │
-│  ┌──────────────────────────────────────────┐    │
-│  │ id | title | content_lob_ptr             │    │
-│  │ 1  | "..." | → LOB 文件偏移量             │    │
-│  └──────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────┘
-                       ↓
-┌──────────────────────────────────────────────────┐
-│                   LOB 文件                        │
-│  ┌──────────────────────────────────────────┐    │
-│  │ 长文本内容...（可能跨多个页面）             │    │
-│  └──────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│                  TEXT 存储策略                        │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  短文本（≤ 内联阈值）：                               │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 记录数据区                                   │   │
+│  │ ┌──────┬────────────────────────────────┐   │   │
+│  │ │ len  │ "Hello World" (直接内联存储)    │   │   │
+│  │ │ 4字节│ 11字节                          │   │   │
+│  │ └──────┴────────────────────────────────┘   │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  长文本（> 内联阈值）：                               │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ 记录数据区                LOB 文件           │   │
+│  │ ┌──────┬──────────┐      ┌───────────────┐ │   │
+│  │ │ len  │ 指针     │ ───→ │ "很长的..."    │ │   │
+│  │ │ 4字节│ 8字节    │      │ (独立存储)     │ │   │
+│  │ └──────┴──────────┘      └───────────────┘ │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
-### 4.4 需要修改的关键位置
+> **Trade-off 思考**：
+> - 内联存储：访问快，但短内容也占固定空间
+> - 指针存储：节省空间，但需要额外 I/O 读取 LOB
+> - 阈值选择：根据实际数据分布调整
 
-#### 1. 类型枚举（attr_type.h）
+### 4.4 实现步骤
 
-添加 TEXT 类型：
+#### 步骤 1：添加类型枚举
+
+**文件**：`src/observer/common/type/attr_type.h`
 
 ```cpp
 enum class AttrType {
@@ -317,113 +337,296 @@ enum class AttrType {
   CHARS,
   INTS,
   FLOATS,
-  TEXTS,      // 新增 TEXT 类型
+  TEXTS,      // 新增
   // ...
 };
 ```
 
-**文件**：`src/observer/common/type/attr_type.h`
-
-#### 2. 类型实现（text_type.h/cpp）
-
-创建 TextType 类，参考 CharType 实现：
+同时添加类型名称映射：
 
 ```cpp
-class TextType : public DataType {
+// attr_type.cpp
+const char *attr_type_to_string(AttrType type) {
+  switch (type) {
+    case AttrType::TEXTS: return "text";
+    // ...
+  }
+}
+```
+
+#### 步骤 2：实现 TextType 类
+
+**文件**：`src/observer/common/type/text_type.h`
+
+```cpp
+class TextType : public DataType
+{
 public:
+  TextType() : DataType(AttrType::TEXTS) {}
+
   int compare(const Value &left, const Value &right) const override;
-  RC add(const Value &left, const Value &right, Value &result) const override;
-  // ...
+  RC cast_to(const Value &val, AttrType type, Value &result) const override;
+  RC set_value_from_str(Value &val, const string &data) const override;
+  int cast_cost(AttrType type) override;
+  RC to_string(const Value &val, string &result) const override;
 };
 ```
 
-#### 3. 词法解析（lex_sql.l）
+**text_type.cpp** 核心实现：
 
-添加 TEXT 关键字：
+```cpp
+int TextType::compare(const Value &left, const Value &right) const
+{
+  // 比较两个 text 值
+  const string &left_str = left.get_string();
+  const string &right_str = right.get_string();
+  return left_str.compare(right_str);
+}
+
+RC TextType::set_value_from_str(Value &val, const string &data) const
+{
+  // 从字符串设置 text 值
+  val.set_string(data.c_str(), data.length());
+  val.set_type(AttrType::TEXTS);
+  return RC::SUCCESS;
+}
+```
+
+#### 步骤 3：添加词法关键字
+
+**文件**：`src/observer/sql/parser/lex_sql.l`
 
 ```
 TEXT      RETURN_TOKEN(TEXT);
 ```
 
-**文件**：`src/observer/sql/parser/lex_sql.l`
+#### 步骤 4：添加语法规则
 
-#### 4. 语法解析（yacc_sql.y）
-
-支持 TEXT 类型定义：
+**文件**：`src/observer/sql/parser/yacc_sql.y`
 
 ```yacc
+// 类型定义规则
 type:
     INT       { $$ = AttrType::INTS; }
   | FLOAT     { $$ = AttrType::FLOATS; }
   | CHAR      { $$ = AttrType::CHARS; }
   | TEXT      { $$ = AttrType::TEXTS; }  // 新增
   ;
+
+// TEXT 类型默认长度
+attr_def:
+    type ID {
+      // ...
+      if ($1 == AttrType::TEXTS) {
+        $$->type = AttrType::TEXTS;
+        $$->len = 4096;  // TEXT 默认最大长度
+      }
+    }
 ```
 
-**文件**：`src/observer/sql/parser/yacc_sql.y`
+#### 步骤 5：类型转换支持
 
-#### 5. LOB 处理器（lob_handler.h/cpp）
+TEXT 应该能接受 CHARS 类型的值：
 
-实现大对象的存储和读取：
+**文件**：`src/observer/common/type/char_type.cpp`
 
 ```cpp
-class LobHandler {
-public:
-  RC write_lob(const char *data, int length, LobPointer &ptr);
-  RC read_lob(const LobPointer &ptr, char *data, int &length);
-  RC delete_lob(const LobPointer &ptr);
-};
+RC CharType::cast_to(const Value &val, AttrType type, Value &result) const
+{
+  switch (type) {
+    case AttrType::TEXTS:
+      // CHARS 可以隐式转换为 TEXT
+      result.set_string(val.value_.string_value_, val.length_);
+      result.set_type(AttrType::TEXTS);
+      return RC::SUCCESS;
+    // ...
+  }
+}
 ```
 
-**文件**：`src/observer/storage/record/lob_handler.h`
+### 4.5 完整调用链
 
-#### 6. Value 类（value.h）
-
-支持 TEXT 类型的值存储：
-
-```cpp
-class Value {
-private:
-  AttrType type_;
-  union {
-    int int_value_;
-    float float_value_;
-    char *char_value_;
-    string_t text_value_;  // 新增
-  };
-};
+```
+CREATE TABLE articles(id int, content text);
+              ↓
+yacc_sql.y: 解析 TEXT 类型 → AttrType::TEXTS
+              ↓
+TableMeta::add_field(): 记录字段类型和长度(默认4096)
+              ↓
+INSERT INTO articles VALUES(1, 'Hello World');
+              ↓
+Table::make_record():
+  检查 content 字段类型是 TEXTS
+  调用 TextType::set_value_from_str()
+              ↓
+Record::set_data(): 存储到记录中
+  短文本：内联存储
+  长文本：写入 LOB 文件，存储指针
 ```
 
-**文件**：`src/observer/common/value.h`
+### 4.6 调试验证
 
-### 4.5 实现步骤
+1. 创建 TEXT 类型表并插入数据：
+```sql
+CREATE TABLE test_text(id int, content text);
+INSERT INTO test_text VALUES(1, 'short text');
+INSERT INTO test_text VALUES(2, 'a very very long text...');
+SELECT * FROM test_text;
+```
 
-1. **定义类型**：在 `attr_type.h` 添加 TEXTS 枚举
-2. **实现 TextType**：创建 `text_type.h/cpp`，实现比较、转换等方法
-3. **修改解析器**：添加 TEXT 关键字和语法规则
-4. **修改 Value 类**：支持存储 text 类型值
-5. **实现 LOB 存储**：完成 `lob_handler.cpp` 的读写功能
-6. **修改记录存储**：处理 text 字段的存储和读取
+2. 在以下位置打断点验证：
+   - `text_type.cpp:compare()` — 比较操作
+   - `char_type.cpp:cast_to()` — 类型转换
+
+3. 检查生成的表元数据文件（`.table`）
+
+### 4.7 实践任务
+
+1. 在 `feature/text-type` 分支查看完整实现
+2. 自己实现一遍 TEXT 类型支持
+3. 测试边界情况：
+   - 空字符串
+   - 超长字符串
+   - CHARS 到 TEXT 的类型转换
+4. 思考：如何支持 TEXT 类型的索引？
 
 ---
 
-## 五、调试建议
+## 五、UPDATE 语句实现
 
-### 5.1 调试 Record Manager
+实现了 TEXT 类型后，我们可以用 UPDATE 语句来测试它。
 
-1. 在 `RecordFileHandler::insert_record()` 打断点
-2. 执行 `INSERT INTO test VALUES(...)`
-3. 观察：
-   - 页面分配过程
-   - Bitmap 的变化
-   - RID 的生成
+### 5.1 从 DELETE 到 UPDATE
 
-### 5.2 调试 Text 类型
+回顾一下 DELETE 的实现：
+1. 找到符合条件的记录
+2. 删除这些记录
 
-1. 先测试短文本（≤12 字节）
-2. 再测试长文本，观察是否使用 LOB
-3. 使用 `EXPLAIN` 查看执行计划
-4. 检查序列化/反序列化是否正确
+UPDATE 的逻辑类似，但不是删除，而是**修改后重新插入**：
+
+```
+DELETE: 查找 → 删除记录
+UPDATE: 查找 → 构造新记录 → 删除旧记录 → 插入新记录
+```
+
+> **思考**：为什么不直接修改记录，而是删除后重新插入？
+>
+> 提示：考虑变长字段（如 TEXT）、索引维护、事务日志...
+
+### 5.2 UPDATE 的处理流程
+
+```
+UPDATE users SET name='Bob' WHERE id=1
+              ↓
+┌──────────────────────────────────────────────────┐
+│  Parser (yacc_sql.y)                             │
+│  解析为 UpdateSqlNode:                           │
+│    table = "users"                               │
+│    attribute_name = "name"                       │
+│    value = "Bob"                                 │
+│    conditions = [id=1]                           │
+└──────────────────────────────────────────────────┘
+              ↓
+┌──────────────────────────────────────────────────┐
+│  UpdateStmt::create()                            │
+│  验证表存在、字段存在、类型匹配                    │
+└──────────────────────────────────────────────────┘
+              ↓
+┌──────────────────────────────────────────────────┐
+│  Logical Plan Generator                          │
+│  生成 UpdateLogicalOperator                      │
+│  子节点：Scan + Filter（找符合条件的记录）         │
+└──────────────────────────────────────────────────┘
+              ↓
+┌──────────────────────────────────────────────────┐
+│  Physical Plan Generator                         │
+│  生成 UpdatePhysicalOperator                     │
+└──────────────────────────────────────────────────┘
+              ↓
+┌──────────────────────────────────────────────────┐
+│  UpdatePhysicalOperator::open()                  │
+│  1. 从子算子获取所有符合条件的记录                 │
+│  2. 对每条记录：                                  │
+│     - 复制数据，修改目标字段                       │
+│     - delete_record(旧记录)                       │
+│     - insert_record(新记录)                       │
+└──────────────────────────────────────────────────┘
+```
+
+### 5.3 关键代码
+
+#### UpdateStmt（语句对象）
+
+```cpp
+class UpdateStmt : public Stmt
+{
+private:
+  Table      *table_;       // 目标表
+  FieldMeta  *field_meta_;  // 要修改的字段
+  Value      *value_;       // 新值
+  FilterStmt *filter_stmt_; // WHERE 条件
+};
+```
+
+#### UpdatePhysicalOperator（物理算子）
+
+```cpp
+RC UpdatePhysicalOperator::open(Trx *trx)
+{
+  // 1. 从子算子收集所有符合条件的记录
+  while (child->next()) {
+    records_.push_back(record);
+  }
+
+  // 2. 对每条记录执行更新
+  for (Record &old_record : records_) {
+    // 复制旧数据
+    char *new_data = malloc(record_size);
+    memcpy(new_data, old_record.data(), record_size);
+
+    // 修改目标字段
+    memcpy(new_data + field_meta_->offset(), value_->data(), value_->length());
+
+    // 创建新记录
+    Record new_record;
+    new_record.set_data_owner(new_data, record_size);
+
+    // 删除旧记录，插入新记录
+    trx->delete_record(table_, old_record);
+    trx->insert_record(table_, new_record);
+  }
+}
+```
+
+> **注意**：这里使用 `malloc()` 而不是 `new[]`，因为 `Record::~Record()` 使用 `free()` 释放内存。内存分配和释放必须配对使用。
+
+### 5.4 调试与测试
+
+1. 测试 UPDATE 基本功能：
+```sql
+CREATE TABLE users(id int, name char(20));
+INSERT INTO users VALUES(1, 'Alice');
+UPDATE users SET name='Bob' WHERE id=1;
+SELECT * FROM users;
+```
+
+2. 测试 TEXT 类型更新：
+```sql
+CREATE TABLE articles(id int, content text);
+INSERT INTO articles VALUES(1, 'old content');
+UPDATE articles SET content='new content here' WHERE id=1;
+SELECT * FROM articles;
+```
+
+3. 关键断点：
+   - `stmt/update_stmt.cpp:create()` — 语句创建
+   - `operator/update_physical_operator.cpp:open()` — 执行更新
+
+### 5.5 实践任务
+
+1. 在 `feature/text-type` 分支查看 UPDATE 实现
+2. 理解"删除+插入"模式的优缺点
+3. 思考：如果要支持 `UPDATE t SET a=a+1`，需要修改什么？
 
 ---
 
