@@ -579,95 +579,303 @@ MiniOB 使用火山模型（Volcano Model）执行查询：
 
 ## 四、Drop Table 实现
 
-### 4.1 当前实现状态
+> **学习目标**：通过实现 `DROP TABLE` 语句，理解 SQL 语句的完整处理流程，以及数据库如何管理磁盘文件。
 
-Drop Table 的**解析层已完成**，但**执行层和存储层未实现**。
+### 4.1 从调试 CREATE TABLE 到实现 DROP TABLE
 
-| 层级 | 状态 |
-|------|------|
-| 词法解析 | ✅ 已实现 |
-| 语法解析 | ✅ 已实现 |
-| Statement 创建 | ❌ 未实现 |
-| 执行器 | ❌ 未实现 |
-| 存储层 | ❌ 未实现 |
+在上一节调试 CREATE TABLE 时，你应该观察到：
 
-### 4.2 关键代码位置
+1. **代码路径**：Parser → Stmt → Executor → Db::create_table()
+2. **创建的文件**：`xxx.table`、`xxx.data`、`xxx.lob`
+3. **内存变化**：表名被加入 `opened_tables_` 映射
 
-#### 词法解析
+现在要实现 DROP TABLE，你觉得需要做什么？
 
-**文件**: `src/observer/sql/parser/lex_sql.l`
+> **思考**：CREATE 和 DROP 是一对相反的操作。如果 CREATE 是"创建"，那 DROP 就是"销毁"。
+>
+> | 操作 | CREATE TABLE | DROP TABLE |
+> |------|--------------|------------|
+> | 内存 | 加入 opened_tables_ | 从 opened_tables_ 移除 |
+> | 对象 | new Table() | delete Table |
+> | 文件 | 创建 .table/.data/.lob | 删除 .table/.data/.lob |
 
-定义 `DROP` 和 `TABLE` 关键字的词法规则。
+所以实现 DROP TABLE，就是沿着 CREATE TABLE 的**反方向**走一遍：
+- CREATE 在哪里创建文件，DROP 就在哪里删除
+- CREATE 在哪里申请内存，DROP 就在哪里释放内存
 
-#### 语法解析
+### 4.2 确定需要删除的文件
 
-**文件**: `src/observer/sql/parser/yacc_sql.y`
-
-```yacc
-drop_table_stmt:    /*drop table 语句的语法解析树*/
-    DROP TABLE ID {
-      $$ = new ParsedSqlNode(SCF_DROP_TABLE);
-      $$->drop_table.relation_name = $3;
-    };
-```
-
-#### 解析结果数据结构
-
-**文件**: `src/observer/sql/parser/parse_defs.h`
+在调试 CREATE TABLE 时，你可能看到了类似这样的文件创建：
 
 ```cpp
-struct DropTableSqlNode
+// Db::create_table() 中
+string table_meta_path = table_meta_file(path_.c_str(), table_name);
+string table_data_path = table_data_file(path_.c_str(), table_name);
+```
+
+所以数据库目录下会生成：
+
+```
+miniob/db/sys/
+├── users.table     # 表元数据（字段定义）
+├── users.data      # 表数据（记录）
+└── users.lob       # 大对象数据（TEXT 类型等）
+```
+
+> **课外知识**：当你执行 `rm large_file.txt` 时，为什么瞬间就完成了？
+>
+> 答案：`rm` 只是删除了文件目录项（directory entry），标记 inode 为可回收。实际的数据块并没有被擦除，只是变成了"空闲空间"。
+>
+> 这就是为什么删除大文件很快，恢复删除的文件有时可行——数据还在磁盘上，只是找不到入口了。
+
+### 4.3 SQL 处理流程
+
+对照 CREATE TABLE 的流程，DROP TABLE 的流程几乎一样：
+
+```
+DROP TABLE users
+       ↓
+┌──────────────┐
+│   Parser     │  输出：ParsedSqlNode(SCF_DROP_TABLE)
+│              │       .drop_table.relation_name = "users"
+└──────────────┘
+       ↓
+┌──────────────┐
+│   Stmt       │  输出：DropTableStmt
+│              │       .table_name_ = "users"
+└──────────────┘
+       ↓
+┌──────────────┐
+│   Executor   │  调用：db->drop_table("users")
+└──────────────┘
+       ↓
+┌──────────────┐
+│   Storage    │  删除文件、清理内存
+└──────────────┘
+```
+
+### 4.3 实现步骤一：DropTableStmt
+
+#### 为什么需要 Stmt？
+
+Parser 输出的是 `ParsedSqlNode`，这是一个"语法树节点"。但语法树只是记录了 SQL 的结构，还没有进行语义检查。
+
+比如：要删除的表是否存在？当前数据库是否有效？
+
+这些检查在 **Stmt 创建阶段** 进行。
+
+#### DropTableStmt 类定义
+
+创建文件 `src/observer/sql/stmt/drop_table_stmt.h`：
+
+```cpp
+#pragma once
+
+#include "common/lang/string.h"
+#include "sql/stmt/stmt.h"
+
+class Db;
+
+class DropTableStmt : public Stmt
 {
-  string relation_name;  ///< 要删除的表名
+public:
+  DropTableStmt(const string &table_name) : table_name_(table_name) {}
+  virtual ~DropTableStmt() = default;
+
+  StmtType type() const override { return StmtType::DROP_TABLE; }
+  const string &table_name() const { return table_name_; }
+
+  static RC create(Db *db, const DropTableSqlNode &drop_table, Stmt *&stmt);
+
+private:
+  string table_name_;
 };
 ```
 
-#### Statement 类型
+这个类很简单，只保存了表名。为什么这么简单？
 
-**文件**: `src/observer/sql/stmt/stmt.h`
+> **思考**：CREATE TABLE 需要保存字段列表、字段类型等信息。而 DROP TABLE 只需要知道"删哪个表"，所以只需要表名。
 
-已定义 `StmtType::DROP_TABLE`。
+#### DropTableStmt 创建函数
 
-#### Statement 创建（待实现）
+创建文件 `src/observer/sql/stmt/drop_table_stmt.cpp`：
 
-**文件**: `src/observer/sql/stmt/stmt.cpp`
+```cpp
+#include "sql/stmt/drop_table_stmt.h"
+#include "storage/db/db.h"
 
-需要在 `Stmt::create_stmt()` 中添加 `DROP_TABLE` 的处理分支。
+RC DropTableStmt::create(Db *db, const DropTableSqlNode &drop_table, Stmt *&stmt)
+{
+  // 当前只保存表名，不做额外的存在性检查
+  // 存在性检查可以在执行阶段做
+  stmt = new DropTableStmt(drop_table.relation_name);
+  return RC::SUCCESS;
+}
+```
 
-#### 执行器（待实现）
+> **设计决策**：表是否存在，是在 Stmt 阶段检查，还是在 Executor 阶段检查？
+>
+> 两种方式都可以。MiniOB 倾向于在 Stmt 阶段做基本检查（如表名是否合法），执行阶段做实际操作检查（如表是否存在）。
 
-**文件**: `src/observer/sql/executor/command_executor.cpp`
+### 4.4 实现步骤二：注册到 stmt.cpp
 
-需要在 `CommandExecutor::execute()` 中添加 `DROP_TABLE` 的处理分支。
+打开 `src/observer/sql/stmt/stmt.cpp`，找到 `create_stmt` 函数：
 
-#### 存储层接口（待实现）
+```cpp
+RC Stmt::create_stmt(Db *db, StmtSqlNode &sql_node, Stmt *&stmt)
+{
+  switch (sql_node.flag) {
+    case SCF_CREATE_TABLE: {
+      return CreateTableStmt::create(db, sql_node.create_table, stmt);
+    }
+    // ... 其他 case ...
 
-**文件**: `src/observer/storage/default/default_handler.cpp`
+    case SCF_DROP_TABLE: {
+      return DropTableStmt::create(db, sql_node.drop_table, stmt);
+    }
 
-`drop_table()` 函数当前返回 `RC::UNIMPLEMENTED`，需要实现实际删除逻辑。
+    default:
+      LOG_WARN("unknown sql statement type: %d", sql_node.flag);
+      return RC::UNIMPLENMENT;
+  }
+}
+```
 
-### 4.3 实现思路
+这就是"分发器"模式：根据 SQL 类型，调用对应的 Stmt 创建函数。
 
-实现 Drop Table 需要补全以下部分：
+### 4.5 实现步骤三：DropTableExecutor
 
-1. **创建 DropTableStmt 类**
-   - 参考 `CreateTableStmt` 的实现方式
-   - 位置：`src/observer/sql/stmt/`
+执行器是真正干活的地方。创建 `src/observer/sql/executor/drop_table_executor.cpp`：
 
-2. **在 stmt.cpp 中添加处理**
-   - 解析 `SCF_DROP_TABLE` 类型
-   - 创建 `DropTableStmt` 对象
+```cpp
+#include "sql/executor/drop_table_executor.h"
+#include "sql/stmt/drop_table_stmt.h"
+#include "storage/db/db.h"
+#include "session/session.h"
 
-3. **在执行器中添加处理**
-   - 调用存储层的 `drop_table()` 接口
+RC DropTableExecutor::execute(SQLStageEvent *sql_event)
+{
+  // 1. 获取 Stmt 对象
+  Stmt *stmt = sql_event->stmt();
+  DropTableStmt *drop_stmt = static_cast<DropTableStmt *>(stmt);
 
-4. **实现存储层删除逻辑**
-   - 删除表文件
-   - 清理元数据
-   - 释放资源
+  // 2. 获取当前数据库
+  Session *session = sql_event->session_event()->session();
+  Db *db = session->get_current_db();
 
-详细实现步骤请参考文档：
-- `docs/design/miniob-how-to-add-new-sql.md`
+  // 3. 调用存储层删除表
+  return db->drop_table(drop_stmt->table_name().c_str());
+}
+```
+
+可以看到，Executor 只是"胶水代码"，把 Stmt 中的参数取出来，调用存储层接口。
+
+### 4.6 实现步骤四：存储层删除逻辑
+
+这是最核心的部分。打开 `src/observer/storage/db/db.cpp`：
+
+```cpp
+RC Db::drop_table(const char *table_name)
+{
+  RC rc = RC::SUCCESS;
+
+  // 1. 检查表是否存在
+  auto iter = opened_tables_.find(table_name);
+  if (iter == opened_tables_.end()) {
+    LOG_WARN("Table not exist. db=%s, table_name=%s", name_.c_str(), table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  Table *table = iter->second;
+
+  // 2. 从内存映射中移除
+  opened_tables_.erase(iter);
+
+  // 3. 获取文件路径
+  string table_meta_path = table_meta_file(path_.c_str(), table_name);
+  string table_data_path = table_data_file(path_.c_str(), table_name);
+  string table_lob_path  = table_lob_file(path_.c_str(), table_name);
+
+  // 4. 删除 Table 对象（释放内存，关闭文件句柄）
+  delete table;
+
+  // 5. 删除磁盘文件
+  if (filesystem::exists(table_meta_path)) {
+    filesystem::remove(table_meta_path);
+  }
+  if (filesystem::exists(table_data_path)) {
+    filesystem::remove(table_data_path);
+  }
+  if (filesystem::exists(table_lob_path)) {
+    filesystem::remove(table_lob_path);
+  }
+
+  return rc;
+}
+```
+
+#### 代码解析
+
+**步骤 1-2：内存清理**
+
+`opened_tables_` 是一个 `map<string, Table*>`，缓存了所有打开的表。删除前必须先从 map 中移除。
+
+**步骤 4：对象销毁**
+
+`delete table` 会触发 `Table` 析构函数，关闭可能持有的文件句柄、释放缓冲区。
+
+> **为什么先 delete table 再删文件？**
+>
+> 想象一下：如果先删了文件，但 Table 对象还持有文件句柄，会发生什么？
+> - Linux 允许删除已打开的文件，文件引用计数归零后才会真正删除
+> - 但这不是好的实践——应该先关闭句柄，再删除文件
+
+**步骤 5：文件删除**
+
+使用 C++17 的 `std::filesystem` 库，比传统的 `unlink()` 更简洁安全。
+
+### 4.7 完整调用链
+
+```
+DROP TABLE users
+       ↓
+ParseStage: 解析为 ParsedSqlNode(SCF_DROP_TABLE)
+       ↓
+ResolveStage: 调用 Stmt::create_stmt()
+       ↓
+DropTableStmt::create(): 创建 Stmt 对象
+       ↓
+ExecuteStage: 调用 CommandExecutor::execute()
+       ↓
+DropTableExecutor::execute(): 取出表名
+       ↓
+Db::drop_table():
+  ├─ 检查表是否存在
+  ├─ 从 opened_tables_ 移除
+  ├─ delete Table 对象
+  └─ 删除 .table, .data, .lob 文件
+```
+
+### 4.8 实践任务
+
+1. 在 `feature/drop-table` 分支查看完整实现
+2. 自己在新分支重新实现一遍
+3. 添加断点调试，观察每一步的数据变化
+4. 思考：如果要支持 `DROP TABLE IF EXISTS`（表不存在不报错），需要修改哪里？
+
+### 4.9 扩展思考
+
+> **问题 1**：如果有其他会话正在查询这个表，DROP TABLE 会怎样？
+>
+> 这涉及并发控制。当前 MiniOB 是简化的单线程模型，实际数据库需要处理这种情况。
+
+> **问题 2**：DROP TABLE 可以回滚吗？
+>
+> 当前实现不行。要支持回滚，需要事务系统（WAL 日志、undo 信息）。
+
+> **问题 3**：大表删除时如何优化？
+>
+> 删除大文件可能很慢。有些数据库采用"异步删除"：先标记删除，后台线程慢慢清理。
 
 ---
 
