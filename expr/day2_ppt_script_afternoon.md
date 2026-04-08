@@ -199,6 +199,7 @@
   - LRU 淘汰结构
 
 **图片：** Buffer Pool 结构图
+文件：`expr/img/day2_pm_p08_buffer_pool_structure.png`
 
 **画法说明**：使用 PPT 分层图。
 - 上半：Frame 数组

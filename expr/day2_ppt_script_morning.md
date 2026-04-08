@@ -94,6 +94,7 @@
   - `Index 通过 RID 指向 Record`
 
 **图片：** MiniOB 存储模块关系图
+文件：`expr/img/day2_am_p03_storage_module_relations.png`
 
 **画法说明**：使用 PPT 原生分层关系图。
 - 最上层：`Db`
@@ -299,6 +300,7 @@ Negative Constraints:
   - 指针省空间，但需要额外 I/O
 
 **图片：** TEXT 混合存储策略图
+文件：`expr/img/day2_am_p10_text_storage_strategy.png`
 
 **画法说明**：使用 PPT 上下对照图。
 - 上半部分：短文本直接放在记录中

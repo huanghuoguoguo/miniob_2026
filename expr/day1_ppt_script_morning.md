@@ -122,6 +122,7 @@
 - 这是一个最基础的 NoSQL 数据库！
 
 **图片：** Map 内存结构示意图
+文件：`expr/img/day1_am_p04_map_structure.png`
 
 **提示词（如果需要 AI 直接生成成品图，使用这一版）：**
 ```text
@@ -261,7 +262,8 @@ Negative Constraints:
   3. Optimizer：生成执行计划（DML）
   4. ExecuteStage：执行器 → 调用存储层
 
-**图片：** SQL 处理流程图（使用已提取的 06_sql_architecture.png）
+**图片：** SQL 处理流程图
+文件：`expr/img/day1_am_p08_sql_pipeline.png`
 
 **提示词（nanobanana备用）：**
 ```text
@@ -320,7 +322,8 @@ Negative Constraints:
 - 每个 Stage 有独立的事件队列和线程池
 - 好处：解耦、可扩展、线程复用
 
-**图片：** SEDA 架构图（使用已提取的 server_module/rId7.png）
+**图片：** SEDA 架构图
+文件：`expr/img/day1_am_p09_seda_architecture.png`
 
 **提示词（nanobanana备用）：**
 ```text
@@ -397,7 +400,8 @@ Negative Constraints:
 - 查询执行使用火山模型（拉取驱动）
 - 每个算子调用 `next()` 向子算子要数据
 
-**图片：** 火山模型示意图（使用已提取的 structure_overview/rId9.png）
+**图片：** 火山模型示意图
+文件：`expr/img/day1_am_p11_volcano_model.png`
 
 **提示词（nanobanana备用）：**
 ```text

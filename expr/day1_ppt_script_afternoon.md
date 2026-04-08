@@ -90,6 +90,7 @@
 - 有索引：B+树查找 O(log n)
 
 **图片：** 有/无索引查询对比图
+文件：`expr/img/day1_pm_p03_index_vs_scan.png`
 
 **画法说明**：优先使用 PPT 左右对比布局。
 - 左侧：一排数据页 + 曲折扫描路径
@@ -171,7 +172,8 @@ Negative Constraints:
 - 扇区、页/块、磁盘页的概念
 - 顺序读 vs 随机读
 
-**图片：** 磁盘结构示意图（使用已提取的 02_db_file_structure.png）
+**图片：** 磁盘结构示意图
+文件：`expr/img/day1_pm_p05_disk_units_read_patterns.png`
 
 **提示词（AI仅备用）：**
 ```text
@@ -223,6 +225,7 @@ Negative Constraints:
 - B+树 vs 红黑树高度对比（1000万数据）
 
 **图片：** 树高度对比图
+文件：`expr/img/day1_pm_p06_bplustree_vs_redblack.png`
 
 **画法说明**：优先使用 PPT 左右对比图。
 - 左侧：矮胖的 B+树
@@ -281,7 +284,8 @@ Negative Constraints:
 - 内部节点 vs 叶子节点
 - 叶子节点链式连接
 
-**图片：** B+树结构示意图（使用已提取的 04_bplus_tree_structure.png）
+**图片：** B+树结构示意图
+文件：`expr/img/day1_pm_p07_bplustree_structure.png`
 
 **提示词（AI仅备用）：**
 ```text
@@ -387,7 +391,8 @@ Negative Constraints:
 **内容：**
 - 从 SQL 到 B+树的完整路径
 
-**图片：** 索引创建调用链（使用已提取的 07_query_execution_plan.png）
+**图片：** 索引创建调用链
+文件：`expr/img/day1_pm_p11_create_index_flow.png`
 
 **提示词（AI仅备用）：**
 ```text
