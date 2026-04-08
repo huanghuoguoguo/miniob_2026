@@ -20,16 +20,72 @@
 **任务要求**：所有 PPT 图片统一使用 **nanobanana pro** 生成，风格必须一致。
 
 **风格规范**：
-- 学术论文风格，细黑线（1-2px）
-- 黑白为主，灰色填充区分层级
-- 几何图形，无圆角，无装饰
-- 纯白背景，无阴影
-- 中文宋体/黑体
+- 整体采用**学术论文插图风格**，克制、清晰、不过度设计
+- 以**低饱和度配色**为主，允许少量 `light blue` / 浅灰蓝作为辅助强调色
+- 主色建议：白底、深灰线条、浅灰填充，强调区域可用淡蓝色块
+- 线条保持细且稳定（约 1-2px），避免夸张描边
+- 图形以几何图形为主，可少量圆角，但整体仍需简洁理性
+- 无阴影、无发光、无纹理、无强装饰，避免海报化和营销感
+- 版式留白充足，层级通过对齐、间距和明度变化体现
+- 中文字体以宋体/黑体等稳重风格为主，避免花哨字体
+
+**配色建议**：
+- 基础背景：纯白或接近白色
+- 主线条：深灰、炭黑，而非纯黑压满全页
+- 次级填充：浅灰、冷灰
+- 强调色：低饱和浅蓝、灰蓝，例如 `#DCEAF4`、`#C9DCEB` 这一类气质
+- 强调色只用于关键模块、高亮路径、重点标注，不要大面积铺色
 
 **提示词格式**：
-- 主体使用英文（AI理解更准确）
-- 文字标注部分明确列出中文内容
-- 结构：【主题】【构图】【元素】【文字】【风格】
+- 主体描述使用英文，保证模型对构图和风格的理解稳定
+- 中文标注单独列出，避免把正文说明和图中文字混在一起
+- 明确拆分为：`Task`、`Layout`、`Elements`、`Text Labels`、`Style Constraints`、`Negative Constraints`
+- 每条提示词先写图像目标，再写布局，再写元素细节，最后补风格约束与禁止项
+- 风格描述不要只写“academic style”，要把颜色、线条、留白、装饰限制写具体
+
+**推荐提示词模板**：
+
+```text
+Task:
+Create an academic-style presentation diagram for [topic].
+
+Layout:
+[Describe the overall composition, reading order, and spatial arrangement.]
+
+Elements:
+[List the key objects, arrows, boxes, layers, labels, or relationships that must appear.]
+
+Text Labels:
+- 中文1：...
+- 中文2：...
+- 中文3：...
+
+Style Constraints:
+- clean academic paper illustration
+- white background
+- thin dark gray lines
+- light gray and low-saturation light blue fills
+- minimal decoration
+- balanced whitespace
+- clear hierarchy
+- professional, calm, understated
+
+Negative Constraints:
+- no glossy effect
+- no 3D rendering
+- no dramatic lighting
+- no saturated colors
+- no heavy shadows
+- no cartoon style
+- no marketing poster style
+```
+
+**提示词写法建议**：
+- 先说清楚这张图是“流程图 / 结构图 / 对比图 / 分层示意图”中的哪一种
+- 箭头方向、模块相对位置、层级关系要写死，减少模型自由发挥
+- 如果要强调重点，明确说明“only use light blue for key path / key module highlights”
+- 图中文字不宜过多，优先保留核心术语，避免整句堆进图片
+- 每次生成后从“统一性、可读性、颜色克制程度”三个维度复核
 
 **进度状态**：
 - [ ] Day1 上午提示词优化完成（day1_ppt_script_morning.md）
@@ -37,10 +93,6 @@
 - [ ] 图片生成中
 - [ ] 图片审核与风格调整
 
-**相关文件**：
-- 上午脚本：`/home/glwuy/miniob_2026/expr/day1_ppt_script_morning.md`
-- 下午脚本：`/home/glwuy/miniob_2026/expr/day1_ppt_script_afternoon.md`
-- 已提取图片目录：待确认
 
 ---
 
