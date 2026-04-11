@@ -1,11 +1,9 @@
-# Day2 上午 PPT 脚本：Record Manager 与 Text / Update 实现
+# Record Manager 与 Text / Update 实现 PPT 脚本
 
 ## PPT 整体信息
-- **标题**：第二天上午：Record Manager 与 Text / Update 实现
+- **标题**：Record Manager 与 Text / Update 实现
 - **时长**：约 3 小时
 - **目标受众**：大二学生，具备 C++、数据结构与 MiniOB Day1 基础
-
-> **图片风格规范**：参考 `/root/workspace/miniob_2026/expr/CLAUDE.md` 中的图片生成规范
 
 ## 教学目标与讲授主线
 
@@ -27,15 +25,13 @@
 
 ## 建议时间安排（3 小时）
 
-- 0-10 分钟：开场、回顾 Day1、说明今天主线
-- 10-35 分钟：模块关系、页面结构、RID、定长/变长记录
-- 35-60 分钟：Record Manager 代码结构、插入流程、关键断点
-- 60-85 分钟：从 `CHAR` 到 `TEXT`，讲清存储问题与混合策略
-- 85-95 分钟：休息或现场答疑
-- 95-120 分钟：`TEXT` 实现入口与调用链
-- 120-145 分钟：`UPDATE` 从 DELETE 类比切入，讲执行流程
-- 145-175 分钟：学生实践与操作，你巡回答疑
-- 175-180 分钟：总结与机动答疑
+- 0-40 分钟：开场、回顾前序内容、说明本节主线；讲模块关系、页面结构、RID、定长/变长记录
+- 40-50 分钟：休息
+- 50-90 分钟：讲 Record Manager 代码结构、插入流程、关键断点；从 `CHAR` 到 `TEXT`，讲清存储问题与混合策略
+- 90-100 分钟：休息
+- 100-140 分钟：讲 `TEXT` 实现入口与调用链；再从 DELETE 类比切入，讲 `UPDATE` 的执行流程
+- 140-150 分钟：休息
+- 150-180 分钟：学生上机实现与验证，你巡回答疑；最后统一总结与机动答疑
 
 ## 使用原则
 
@@ -49,7 +45,7 @@
 ## 第 1 页：封面
 
 **内容：**
-- 主标题：MiniOB 数据库内核实战 - Day 2 上午
+- 主标题：MiniOB 数据库内核实战
 - 副标题：Record Manager 与 Text / Update 实现
 
 **图片：** 无需图片
@@ -57,6 +53,8 @@
 **讲授建议（约 2 分钟）**：
 - 开场直接点题：今天从“索引怎么定位记录”继续往下走，回答“记录本身怎么存、怎么改”
 - 告诉学生：上午不是独立知识点堆砌，而是把存储、类型和执行串起来
+- 可以先替学生翻译一下今天这节课的目标：前面已经知道“怎么找到一条记录”，今天要解决的是“这条记录到底怎么放在文件里，以及改它时系统会做什么”
+- 对基础还不牢的学生，先把主题讲成“记录怎么存、长文本怎么存、更新怎么做”这三个具体问题，比直接抛一堆类名更容易进入状态
 
 ---
 
@@ -80,6 +78,8 @@
 **讲授建议（约 3 分钟）**：
 - 这一页只讲路线和预期产出，不展开概念
 - 要让学生知道：前半段建立存储模型，后半段用功能实现把模型落到代码
+- 可以明确告诉学生：今天这节课不是背概念，而是先看清记录存储这张地图，再顺着 `TEXT` 和 `UPDATE` 两个功能去落代码
+- 这样能降低学生的紧张感，因为他们会知道后面的代码并不是凭空看，而是有前面几页做铺垫
 
 ---
 
@@ -104,53 +104,11 @@
 - 底层：`Buffer Pool` 与磁盘文件
 - 用箭头标出“持有”“通过 RID 定位”“通过页面读写”
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style layered architecture diagram showing how Db, Table, Record Manager, Index, Buffer Pool, and disk files relate in a database kernel.
-
-Layout:
-Top-to-bottom layered composition. Db at the top, Table in the middle, Record Manager and Index beneath it, Buffer Pool below them, and disk files at the bottom.
-
-Semantic Elements:
-- One top container for Db
-- One middle container for Table
-- Two side-by-side containers for Record Manager and Index
-- One wide container for Buffer Pool
-- One bottom strip for disk files
-- Thin directional arrows showing ownership and access flow
-
-Text Labels:
-- 数据库实例 Db
-- 表 Table
-- 记录管理器
-- 索引
-- 缓冲池
-- 磁盘文件
-- 持有
-- 通过 RID 定位
-- 通过页面读写
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray and very light desaturated blue fills
-- minimal decoration
-- use Chinese labels for structural explanations
-- keep English only for code identifiers such as Db, Table, RID
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank unlabeled containers
-- no saturated colors
-- no heavy shadows
-- no 3D rendering
-```
-
 **讲授建议（约 8 分钟）**：
 - 这页的目标是把地图立起来，不是讲清每个类的全部职责
 - 要重点讲一句：索引不直接存整条记录，而是通过 RID 回到 Record Manager 找记录
+- 这页对学生来说最容易混乱的地方，是把 `Table`、`Index`、`Record Manager` 看成三个彼此独立的东西，所以一定要强调它们其实是在围绕“表里的记录”协同工作
+- 可以把它讲成一句更直白的话：索引负责帮你更快找到位置，真正把记录存起来和取出来的还是 Record Manager
 
 ---
 
@@ -177,6 +135,9 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这是上午最关键的基础页之一，建议慢讲
 - 不要讲得太像数据结构课，重点放在“为什么页内还需要再做一层管理”
+- 学生很自然会想：“文件里直接一条条往后写不就行了吗？” 这一页就要回答这个问题
+- 可以告诉他们：如果没有页面这层管理，后面要找空位、删记录、复用空间、定位记录都会变得很麻烦，所以数据库不会把文件当成一长串随便拼接的字节
+- 不需要引入更底层的磁盘页格式细节，只要让他们先接受“记录是按页组织的”这个事实
 
 ---
 
@@ -197,6 +158,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 要把 RID 讲成“磁盘世界里的稳定地址”
 - 再把 Bitmap 讲成“页内最便宜的占用管理方案”
+- 这里很适合借学生熟悉的二维坐标做类比：`page_num` 像第几页，`slot_num` 像这一页里的第几个格子，两者合起来就能定位到一条记录
+- Bitmap 不必讲位运算细节，只要让学生理解成“一张占用表”，哪个槽位空着、哪个槽位有人用了，一眼就能知道
 
 ---
 
@@ -219,6 +182,8 @@ Negative Constraints:
 **讲授建议（约 6 分钟）**：
 - 这页不要掉进细节，把矛盾抛出来就够了
 - 结尾自然过渡：`TEXT` 就是这个矛盾的典型例子
+- 这一页最重要的是让学生承认：定长记录简单，但现实里的数据并不总是那么规整
+- 可以直接举例：姓名、电话这种还比较适合定长，文章内容、评论内容、简介这类字段就很难硬塞成固定长度
 
 ---
 
@@ -244,6 +209,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页是为了让学生后面打断点时不至于迷路
 - 不要求他们记全方法，只要知道“文件级 / 页面级 / 扫描级”三层分工
+- 类图这里不要讲成面向对象设计课，重点是帮助学生后面看到类名时知道它大概负责哪一层
+- 对大二学生来说，能把“哪个类管整个文件、哪个类管单个页面、哪个类负责遍历”分清楚，就已经很够用了
 
 ---
 
@@ -265,6 +232,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这一页适合配合现场调试一起讲
 - 强调“插入记录”不仅是写字节，更是给后续索引和更新建立定位能力
+- 这里可以把插入讲成一套很具体的动作：先找能放的地方，再把数据塞进去，再记住它的位置
+- 这样学生就更容易理解为什么最后返回 `RID` 很关键，因为后面索引、删除、更新都会依赖这个位置标识
 
 ---
 
@@ -286,6 +255,8 @@ Negative Constraints:
 **讲授建议（约 6 分钟）**：
 - 这页是 `TEXT` 的引入页，不要讲类型实现细节
 - 只让学生接受一个事实：变长文本不能继续靠定长列硬撑
+- 这一页一定要尽量贴近真实应用场景，比如一篇文章内容、用户简介、评论正文，不可能都提前规定成 100 个字符刚刚好
+- 学生只要意识到“短字符串浪费、长字符串装不下”，就能自然接受为什么数据库需要专门处理长文本
 
 ---
 
@@ -299,56 +270,19 @@ Negative Constraints:
   - 内联快，但占记录空间
   - 指针省空间，但需要额外 I/O
 
-**图片：** TEXT 混合存储策略图
-文件：`expr/img/day2_am_p10_text_storage_strategy.png`
+**图片：** 不使用外部图片，改为 PPT 原生对照图
 
 **画法说明**：使用 PPT 上下对照图。
 - 上半部分：短文本直接放在记录中
 - 下半部分：记录中存长度 + 指针，箭头指向 `.lob`
+- 所有标签、指针、trade-off 说明都使用 PPT 文本框与形状绘制
 - 只保留“inline”和“LOB”两个关键词
-
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style diagram showing hybrid TEXT storage: inline short text versus external LOB storage for long text.
-
-Layout:
-Top-bottom comparison. Upper part shows text stored directly in a record. Lower part shows a record holding a pointer to an external LOB block.
-
-Semantic Elements:
-- One record container for inline storage
-- One record container plus one external LOB container for out-of-line storage
-- Thin pointer arrow from record to LOB
-
-Text Labels:
-- 短文本
-- 直接内联
-- 长文本
-- 指针
-- LOB 文件
-- 访问快但占空间
-- 节省空间但多一次读取
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray and very light desaturated blue fills
-- minimal decoration
-- use Chinese labels for process descriptions and trade-offs
-- keep English only for TEXT and LOB if needed
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank storage boxes
-- no saturated colors
-- no heavy shadows
-- no 3D effect
-```
 
 **讲授建议（约 8 分钟）**：
 - 这页是理解 `TEXT` 的核心页，建议多讲一点 trade-off
 - 不要承诺实现细节一定完全等同于图，图的目的是先建立思维模型
+- 这里不要把实现讲死，重点是帮学生建立“短的可以直接放记录里，长的可能要放外面，只在记录里留一个定位信息”这个思路
+- 对还没学过很多存储细节的学生来说，只要能理解“省空间”和“多一次访问”之间的取舍，就已经足够了
 
 ---
 
@@ -374,6 +308,8 @@ Negative Constraints:
 **讲授建议（约 10 分钟）**：
 - 这页不是让学生背文件名，而是给他们实践时的修改地图
 - 口头强调：先打通“类型被识别”，再处理“值怎么存”
+- 这一页要非常强调顺序：先让系统认识 `TEXT` 这个类型，再让它知道这个类型的值怎么写进去
+- 如果一开始就跳到存储代码，学生很容易陷进去；先把修改点地图给出来，能明显降低他们实践时的迷路概率
 
 ---
 
@@ -396,6 +332,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页要把“DDL 定义类型”和“DML 写入值”这两条链连起来
 - 让学生知道 `TEXT` 不是只改 parser，也不是只改类型类
+- 这里很适合帮学生建立完整工程意识：一个新类型进入系统，不是改一个点就结束，而是“建表时要认识它，插入数据时也要会处理它”
+- 只要学生能看到“定义”和“使用”这两条链是连着的，这页就达标
 
 ---
 
@@ -418,6 +356,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页是上午第二个关键桥页
 - 要把 `UPDATE` 和前面讲过的“记录存储、TEXT 变长”自然串起来
+- `UPDATE` 可以讲得非常朴素：先找到旧值，再准备新值，再把旧记录换成新记录
+- 这样学生更容易把它和前面学过的记录写入联系起来，而不是把 `UPDATE` 看成一个完全独立的新机制
 
 ---
 
@@ -442,6 +382,8 @@ Negative Constraints:
 **讲授建议（约 10 分钟）**：
 - 这页适合配合代码演示讲，不建议只看 PPT 空讲
 - 要讲明白为什么 `UPDATE` 在执行层会和 Record Manager 紧密耦合
+- 对大二学生来说，这一页最重要的不是记住每个 Operator 的名字，而是知道最终一定会回到“记录怎么被改写”这个层面
+- 可以反复强调：SQL 再高层，落到最后还是要有人去动记录
 
 ---
 
@@ -462,6 +404,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页主要讲工程意识，不讲大段实现细节
 - 特别提醒 `malloc/free` 配对这类低级但高频的问题
+- 这里可以顺手培养学生的工程警觉性：很多 bug 不是算法不会，而是资源没配对、内存没释放、旧记录和新记录状态没处理干净
+- 不需要展开成 C++ 内存管理专题，只要让他们知道这是实践里最常踩的坑之一
 
 ---
 
@@ -484,6 +428,7 @@ Negative Constraints:
 **讲授建议（约 5 分钟）**：
 - 这一页之后应切到学生实践时间
 - 任务顺序要给得明确，不要让学生同时改三块内容
+- 最好把任务讲成分步操作，让学生先观察 `INSERT` 和页面，再去碰 `TEXT`，最后再看 `UPDATE`，避免一上来三条线同时开工
 
 ---
 
@@ -499,6 +444,7 @@ Negative Constraints:
 **讲授建议**：
 - 如果实践问题多，这页可以完全当机动缓冲
 - 如果节奏快，也可以用来收尾和布置课后复盘
+- 收尾时不要再抛新概念，重点是帮学生把“记录按页管理、长文本要特殊处理、更新最终落到记录重写”这三句话收住
 
 ---
 
@@ -523,15 +469,3 @@ Negative Constraints:
 | 16 | 任务总结图 | **PPT 原生** | 清单页无需 AI |
 
 ---
-
-## 提示词使用说明
-
-1. **制图策略分离**：含代码路径、类型名、类名、调用链、修改点的页面，一律优先使用 PPT 原生绘制。
-2. **AI优先直接出成品图**：模块关系图、TEXT 存储策略这类概念结构页，优先让 AI 直接生成带简短标签的成品图；必要时再退回到底图模式。
-3. **统一风格准则**：
-   - 所有 AI 图片必须遵循《CLAUDE.md》的学术论文风格：低饱和、克制、清晰。
-   - 主体保持白底、深灰线条、浅灰填充，允许少量浅灰蓝作为强调色。
-   - 禁止使用饱和色块、重阴影、3D 效果、营销海报风格。
-   - 解释性标签、流程说明、存储策略优先使用中文；只有代码标识符和类型名保留英文。
-4. **课堂控制原则**：不要在 PPT 中展开页面头字段、类型接口、`malloc/free` 等代码细节，它们适合口头讲解或现场演示。
-5. **实践优先原则**：这节课至少要留出 30 分钟以上给学生动手，否则他们很难真正理解 `TEXT` 和 `UPDATE` 的实现路径。

@@ -1,0 +1,11 @@
+# 生成的 PPT 文件
+output/*.pptx
+output/*.pdf
+output/*/
+
+# 依赖目录
+.pptxgen-deps/
+
+# 临时文件
+*.tmp
+*.log

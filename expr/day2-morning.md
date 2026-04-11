@@ -1,4 +1,6 @@
-# 第二天上午：Record Manager 与 Text 类型实现
+# 第二天上午：Record Manager 与 Text / Update 实现
+
+> 阅读说明：本文面向同学课前预习。阅读时建议先抓住三条线：记录怎么落到页里、`TEXT` 为什么不能继续按定长列处理、`UPDATE` 为什么会和记录重写连在一起。
 
 ## 一、引言
 
@@ -105,7 +107,7 @@
 - 理解记录的存储格式（定长 vs 变长）
 - 掌握页面结构与 RID（Record ID）的概念
 - 了解 MiniOB 中 Record Manager 的实现
-- 实现 text 类型支持
+- 理解并实现 text 类型支持
 
 ---
 

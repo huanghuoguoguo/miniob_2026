@@ -1,11 +1,13 @@
 # 第一天上午：环境配置与 Drop Table 实现
 
-## 教学目标
+> 阅读说明：本文面向同学课前预习，重点是先建立整体地图。阅读时不必一次记住所有文件名和断点位置，先看懂“SQL 是怎么一路走到存储层”的主线即可。
 
-- 让学生完成 MiniOB 基本开发环境准备，知道最小可运行链路是什么
-- 让学生建立从 SQL 输入到存储层执行的整体心智模型，而不是只记零散模块名
-- 让学生掌握“通过调试理解系统”的基本方法，能沿着关键断点观察数据流
-- 以 `DROP TABLE` 为案例，让学生理解 DDL 在 MiniOB 中的完整实现路径，以及 `CREATE`/`DROP` 的对称关系
+## 学习目标
+
+- 完成 MiniOB 基本开发环境准备，知道最小可运行链路是什么
+- 建立从 SQL 输入到存储层执行的整体心智模型，而不是只记零散模块名
+- 掌握“通过调试理解系统”的基本方法，能沿着关键断点观察数据流
+- 以 `DROP TABLE` 为案例，理解 DDL 在 MiniOB 中的完整实现路径，以及 `CREATE`/`DROP` 的对称关系
 
 ## 一、环境配置
 
@@ -363,7 +365,7 @@ class RowTuple {
 
 ---
 
-## 三、MiniOB 调试讲解
+## 三、MiniOB 调试准备与观察建议
 
 在进入 Drop Table 实现之前，我们需要先熟悉 MiniOB 的运行机制。通过调试 CREATE TABLE 和 SELECT 语句，理解数据流向。
 
@@ -443,7 +445,7 @@ MiniOB 项目已配置好 VSCode 调试环境（`.vscode/launch.json`），可�
 
 ### 3.3 关键断点位置
 
-建议在以下位置打断点，观察数据流向：
+预习或上机时，可以在以下位置打断点，观察数据流向：
 
 #### 网络请求接收
 | 文件 | 行号 | 函数 | 说明 |
@@ -525,7 +527,7 @@ MiniOB 使用火山模型（Volcano Model）执行查询：
 - 子算子返回一行或 EOF
 - 从叶子算子（TableScan）开始，逐层向上传递
 
-**断点建议**：在 `TableScanPhysicalOperator::next()` 和 `ProjectPhysicalOperator::next()` 打断点，观察数据如何从存储层流向输出层。
+**观察建议**：在 `TableScanPhysicalOperator::next()` 和 `ProjectPhysicalOperator::next()` 打断点，观察数据如何从存储层流向输出层。
 
 ---
 

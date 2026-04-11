@@ -1,11 +1,9 @@
-# Day1 上午 PPT 脚本：环境配置与 Drop Table 实现
+# 环境配置与 Drop Table 实现 PPT 脚本
 
 ## PPT 整体信息
-- **标题**：第一天上午：环境配置与 Drop Table 实现
+- **标题**：环境配置与 Drop Table 实现
 - **时长**：约 3 小时
 - **目标受众**：大二学生，具备 C++ 和数据结构基础
-
-> **图片风格规范**：参考 `/root/workspace/miniob_2026/expr/CLAUDE.md` 中的图片生成规范
 
 ## 教学目标与讲授主线
 
@@ -27,15 +25,13 @@
 
 ## 建议时间安排（3 小时）
 
-- 0-10 分钟：开场、课程安排、环境检查
-- 10-35 分钟：从 `map` 出发，讲三个核心问题和存储层次
-- 35-60 分钟：MiniOB 全景图、SQL 处理流程、SEDA 总体认识
-- 60-85 分钟：现场调试演示，带学生看 CREATE TABLE / SELECT 的关键断点
-- 85-95 分钟：休息或现场答疑
-- 95-120 分钟：引入 DROP TABLE，讲 CREATE / DROP 对称关系与完整调用链
-- 120-140 分钟：讲 `Db::drop_table` 核心逻辑和实现切入点
-- 140-175 分钟：学生实践与操作，你巡回答疑
-- 175-180 分钟：总结、布置课后继续完善的方向
+- 0-40 分钟：开场、课程安排、环境检查；从 `map` 出发，讲三个核心问题和存储层次
+- 40-50 分钟：休息
+- 50-90 分钟：MiniOB 全景图、SQL 处理流程、SEDA 总体认识；现场调试演示，带学生看 CREATE TABLE / SELECT 的关键断点
+- 90-100 分钟：休息
+- 100-140 分钟：引入 DROP TABLE，讲 CREATE / DROP 对称关系、完整调用链，以及 `Db::drop_table` 的核心逻辑和实现切入点
+- 140-150 分钟：休息
+- 150-180 分钟：学生上机实现与验证，你巡回答疑；最后统一总结并布置课后继续完善的方向
 
 ## 使用原则
 
@@ -49,7 +45,7 @@
 ## 第 1 页：封面
 
 **内容：**
-- 主标题：MiniOB 数据库内核实战 - Day 1 上午
+- 主标题：MiniOB 数据库内核实战
 - 副标题：环境配置与 Drop Table 实现
 - 底部：你的名字/日期
 
@@ -61,7 +57,37 @@
 
 ---
 
-## 第 2 页：课程安排预览
+## 第 2 页：数据库内核实战
+
+**内容：**
+- 这两天的目标：从“看懂 MiniOB 链路”到“能沿着模块完成几个核心功能”
+- 四个模块的安排：
+  1. 模块一：环境配置、SQL 链路、Drop Table
+  2. 模块二：B+树结构、多列索引实现
+  3. 模块三：Record Manager、Text / Update
+  4. 模块四：Buffer Pool 缓冲池
+- 讲授强调：
+  - 不是把所有模块一次讲完
+  - 而是按链路逐步推进，每半天解决一类真实问题
+
+**图片：** 无需图片，使用 PPT 原生卡片或四象限布局
+
+**画法说明**：使用 PPT 原生四卡片布局。
+- 左上：模块一
+- 右上：模块二
+- 左下：模块三
+- 右下：模块四
+- 页面顶部加一句总述，底部加一句课程节奏说明
+
+**讲授建议（约 3 分钟）**：
+- 这一页只建立两天全貌，不展开具体实现
+- 让学生先知道课程不是碎片知识点，而是按模块逐步打通数据库内核
+- 对大二学生来说，这一页最重要的不是记住四个模块名称，而是先降低心理压力，让他们知道这门课不是一上来就要求把整个数据库吃透
+- 可以直接告诉学生：今天不会一开始就让大家理解所有源码，而是先看懂一条链路、找到几个关键文件、完成一个小功能，后面的内容都是在这个基础上逐步叠加
+
+---
+
+## 第 3 页：课程安排预览
 
 **内容：**
 - 今天我们要做什么？
@@ -75,17 +101,19 @@
 **画法说明**：使用 PPT SmartArt 的水平流程图，或手动绘制 4 个等宽矩形，添加连接箭头。
  - 矩形 1：环境检查
 - 建议口播：环境安装本身作为课前准备或现场演示，这里只检查是否已经具备最小可运行条件
-- 矩形 2：项目结构  
+- 矩形 2：项目结构
 - 矩形 3：调试技巧
 - 矩形 4：DROP TABLE实现
 
 **讲授建议（约 3 分钟）**：
 - 这一页只讲路线，不讲细节
 - 要让学生提前知道：前半段是理解系统，后半段是动手实现
+- 这里可以把“先看图，再看代码，再自己改”这个节奏说清楚，让学生知道自己不是一开始就要进源码硬啃
+- 对基础还不牢的学生，可以明确给一个预期：前面听不懂所有细节很正常，只要先记住每一段要解决什么问题，后面看代码时就不容易迷路
 
 ---
 
-## 第 3 页：开发环境检查表
+## 第 4 页：开发环境检查表
 
 **内容：**
 - 本节默认环境安装已基本完成，这里只做最小运行条件检查
@@ -110,10 +138,12 @@
 - 逐项快速确认，控制在 5 分钟内
 - 不现场展开安装教学，只确认是否能进入今天的主线
 - 对未完成环境的同学做分流，不让全班在这一页停太久
+- 这一页的语气要偏“实验课准备检查”，不是“环境安装教学”；重点是确认学生能跟上后面的演示和上机，而不是现在把所有环境问题现场解决
+- 可以顺手提醒学生：后面遇到运行失败时，先优先怀疑环境、路径、进程是否启动，而不是一上来怀疑自己代码逻辑错了，这能帮他们建立基本的排错习惯
 
 ---
 
-## 第 4 页：从最简单的存储开始
+## 第 5 页：从最简单的存储开始
 
 **内容：**
 - 问题引入：最简单的数据存储是什么？
@@ -121,68 +151,24 @@
 - 代码示例（简化版）
 - 这是一个最基础的 NoSQL 数据库！
 
-**图片：** Map 内存结构示意图
-文件：`expr/img/day1_am_p04_map_structure.png`
+**图片：** 不使用外部图片，改为 PPT 原生框图
 
-**提示词（如果需要 AI 直接生成成品图，使用这一版）：**
-```text
-Task:
-Create a finished academic-style teaching diagram showing how an in-memory map<string, string> works.
-
-Layout:
-Left-to-right teaching composition. Two operations on the left, one central in-memory map container in the middle, one returned result block on the right. The layout should be clean, balanced, and presentation-ready.
-
-Semantic Elements:
-- Upper left operation block for 写入
-- Lower left operation block for 查询
-- Center container labeled map<string, string>
-- Inside the center container, visible key-value rows with two columns: key and value
-- Example rows such as:
-  - name | Alice
-  - age | 20
-  - city | Beijing
-  - id | 1001
-- Right side result block showing 返回结果
-- Straight arrows: 写入 -> map, 查询 -> map, map -> 返回结果
-
-Text Labels:
-- 写入操作
-- 查询操作
-- map<string, string>
-- 键
-- 值
-- 返回结果
-- set("name", "Alice")
-- get("name")
-- "Alice"
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray fills with very light desaturated blue emphasis
-- minimal decoration
-- calm, rational, understated
-- use Chinese labels for process descriptions and explanations
-- keep English only for code identifiers like map<string, string>
-- finished presentation-ready diagram, not a draft layout
-
-Negative Constraints:
-- no blank placeholder boxes
-- no generic wireframe flowchart
-- no meaningless empty containers
-- no 3D effect
-- no heavy shadows
-- no saturated colors
-```
+**画法说明**：使用 PPT 原生图形直接绘制。
+- 左侧：两个操作框，分别表示写入和查询
+- 中间：`map<string, string>` 容器，内部画 2 列表格
+- 右侧：返回结果框
+- 所有中文标签、代码文本、表头与示例数据都用 PPT 文本框叠字，不依赖 AI 出图文字
 
 **讲授建议（约 8 分钟）**：
 - 这页是上午主线的起点，要把“数据库不是突然复杂起来的”讲出来
-- 代码只放最小片段，重点靠你口头引导学生思考它缺了什么
+- 可以先从学生熟悉的小项目切入，比如他们之前可能写过图书馆管理系统、学生信息管理系统，最开始往往是直接用数组、链表、`map`，甚至只放在程序运行时的内存里
+- 顺着这个经验往下讲：当时也许系统能跑、功能也能做，但一旦程序重启，数据就全丢了；如果想按条件查找，也只能自己遍历；如果数据再大一点，自己维护起来就会越来越乱
+- 要让学生意识到：数据库不是凭空出现的一堆复杂模块，而是从“我想把数据存下来”“我想更快查数据”“我不想每次都自己维护一套存储逻辑”这些真实需求一步步长出来的
+- 代码只放最小片段，重点靠你口头把“学生做过的小系统”迁移到“数据库为什么需要持久化、索引和缓存”这个主线上
 
 ---
 
-## 第 5 页：三个核心问题
+## 第 6 页：三个核心问题
 
 **内容：**
 - 但是...这个简单 map 有什么问题？
@@ -204,10 +190,13 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这一页不要念表格，要用“一个简单系统为什么会自然长成数据库”来串联
 - 三个问题里，重点放在“磁盘交互”这一行，为后续 Buffer Pool 和存储层埋钩子
+- 可以继续沿用上一页的小项目经验来讲，比如图书馆管理系统一开始只要“能增删改查”就够了，但一旦想让它真正可用，就一定会遇到“重启后还在不在”“按条件查会不会太慢”“数据多了读写会不会卡”这些问题
+- 讲的时候尽量不要一下子抛出太多专业术语，而是先让学生承认“这些麻烦我自己写小系统时确实也会碰到”，然后再告诉他们：数据库本质上就是把这些麻烦系统化解决掉
+- “缓冲池”这一项可以只先种个印象，不要求他们现在就懂，告诉他们先记住一句话：数据不可能每次都直接碰磁盘，中间一定会有一层帮你缓一下
 
 ---
 
-## 第 6 页：存储层次结构（OS 知识穿插）
+## 第 7 页：存储层次结构（OS 知识穿插）
 
 **内容：**
 - 为什么需要持久化？先看存储层次：
@@ -227,10 +216,12 @@ Negative Constraints:
 **讲授建议（约 6 分钟）**：
 - 这页是操作系统知识穿插，点到为止，不要展开成一节 OS 课
 - 核心只讲一句：数据库设计就是在快和久之间做权衡
+- 面对还没系统学过操作系统和组成原理的学生，不要去讲缓存一致性、页表、总线这些底层细节，只保留最朴素的直觉：越快的地方越小、断电越容易丢；越能长期保存的地方通常越慢
+- 这一页最好讲成生活化比较，而不是术语讲解。比如可以说：内存像临时工作台，磁盘像仓库，数据库每天做的事就是想办法既利用工作台的快，又利用仓库的稳
 
 ---
 
-## 第 7 页：MiniOB 项目全景图
+## 第 8 页：MiniOB 项目全景图
 
 **内容：**
 - MiniOB 是如何解决这三个问题的？
@@ -250,10 +241,13 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页的目标不是讲细每个模块，而是先把地图立起来
 - 学生只要先知道“SQL 不是直接落到磁盘，而是经过若干层”就够了
+- 对大二学生来说，看到这张图很容易第一反应就是“层太多，看不懂”。你可以先替他们降难度：不要要求自己一遍就记住全部模块，只要先记住入口在左边、数据落地在下边，中间是一层层处理
+- 可以把整张图压缩成一句话反复说：一条 SQL 进来以后，不是马上操作文件，而是先被理解、再被组织、最后才去碰存储
+- 这里不建议展开讲网络、优化器内部细节，先让学生形成“分层处理”的概念，比知道每层类名更重要
 
 ---
 
-## 第 8 页：SQL 处理流程
+## 第 9 页：SQL 处理流程
 
 **内容：**
 - 一条 SQL 的一生：
@@ -265,57 +259,16 @@ Negative Constraints:
 **图片：** SQL 处理流程图
 文件：`expr/img/day1_am_p08_sql_pipeline.png`
 
-**提示词（nanobanana备用）：**
-```text
-Task:
-Create a finished academic-style SQL processing pipeline diagram for a database kernel lecture slide.
-
-Layout:
-Five horizontally aligned stage containers with clear left-to-right reading order. The diagram should already contain concise labels and be usable directly in a presentation.
-
-Semantic Elements:
-- Five rectangular stage boxes
-- Thin rightward arrows between stages
-- A slightly larger final storage box or area
-- Optional short subtitle text under key stages
-
-Text Labels:
-- SQL 输入
-- 词法/语法解析
-- 语义分析
-- 优化器
-- 执行器
-- 存储引擎
-- ParseStage
-- ResolveStage
-- ExecuteStage
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray and very light desaturated blue fills
-- balanced whitespace
-- professional and understated
-- use Chinese labels for process descriptions
-- keep English only for code or stage identifiers when needed
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank stage placeholders
-- no generic empty boxes
-- no saturated colors
-- no heavy shadows
-- no 3D rendering
-```
-
 **讲授建议（约 8 分钟）**：
 - 这是全场最关键的链路页之一，建议你停下来慢讲
 - 要把 DDL 和 DML 的分流口头说出来，帮助学生理解为什么 DROP TABLE 不走完整优化器路径
+- 这一页要尽量讲成“流水线”，而不是抽象名词堆叠。比如可以说：先把 SQL 看懂，再判断它到底想干什么，再决定后面怎么执行
+- `ParseStage`、`ResolveStage`、`Optimizer` 这些词对学生比较陌生，建议每个阶段都只配一个最朴素的解释，不要上来就讲“语义绑定”“逻辑计划”“物理计划”这类更深的词
+- 对 `DROP TABLE` 的分流可以讲得很直白：有些 SQL 是“查数据”，有些 SQL 是“改系统结构”；像 `DROP TABLE` 这种更像管理动作，所以它的走法和 `SELECT` 不完全一样
 
 ---
 
-## 第 9 页：SEDA 框架详解
+## 第 10 页：SEDA 框架详解
 
 **内容：**
 - MiniOB 使用 SEDA（Staged Event-Driven Architecture）
@@ -325,54 +278,16 @@ Negative Constraints:
 **图片：** SEDA 架构图
 文件：`expr/img/day1_am_p09_seda_architecture.png`
 
-**提示词（nanobanana备用）：**
-```text
-Task:
-Create a finished academic-style SEDA architecture diagram for a systems lecture slide.
-
-Layout:
-Three horizontally arranged stage containers. Each stage should clearly show an upper thread-pool region and a lower event-queue region. Use left-to-right event flow arrows and include concise labels directly in the diagram.
-
-Semantic Elements:
-- Three large rectangular stage containers
-- A top sub-area in each container for thread pool
-- A bottom sub-area with stacked queue slots
-- Thin arrows showing event flow across stages
-
-Text Labels:
-- 阶段 1
-- 阶段 2
-- 阶段 3
-- 线程池
-- 事件队列
-- Event Flow
-- SEDA
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray fills with optional very light blue emphasis
-- minimal decoration
-- clear modular hierarchy
-- use Chinese labels for process descriptions
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank container placeholders
-- no industrial poster look
-- no saturated colors
-- no heavy shadows
-- no 3D effect
-```
-
 **讲授建议（约 6 分钟）**：
 - 这一页只建立“分阶段处理”的认识，不追求学生完全理解线程模型
 - 如果时间紧，可以压缩讲解，把细节放到讲义里
+- 对这个年级的学生，不要把重点放在线程池和并发模型本身，否则很容易把一页数据库课讲成操作系统课
+- 只要让他们留下两个印象就够了：第一，系统不是一坨代码一起跑，而是分成几个阶段；第二，这样分开之后更容易管理、更容易扩展、出问题也更容易定位
+- 如果学生表现出明显吃力，这页甚至可以退到“知道 MiniOB 里有 Stage 这个概念”就收，不必强求完全理解
 
 ---
 
-## 第 10 页：调试方法论
+## 第 11 页：调试方法论
 
 **内容：**
 - 调试是理解代码最好的方式
@@ -391,10 +306,12 @@ Negative Constraints:
 **讲授建议（约 5 分钟）**：
 - 这页不要停留太久，它的任务是为后面的现场调试演示做导航
 - 讲完这页应立刻切到 IDE 或终端做一次真实断点演示
+- 这一页的重点不是让学生背行号，而是教他们建立“看不懂源码时，先找入口、再顺着调用往下跟”的习惯
+- 可以明确告诉学生：我们今天不是靠把源码全读完来理解系统，而是靠断点把一条真实 SQL 走一遍，这对基础还不牢的同学更友好，也更符合实验课节奏
 
 ---
 
-## 第 11 页：火山模型（Volcano Model）
+## 第 12 页：火山模型（Volcano Model）
 
 **内容：**
 - 查询执行使用火山模型（拉取驱动）
@@ -403,52 +320,15 @@ Negative Constraints:
 **图片：** 火山模型示意图
 文件：`expr/img/day1_am_p11_volcano_model.png`
 
-**提示词（nanobanana备用）：**
-```text
-Task:
-Create a finished academic-style volcano model operator stack diagram for a database lecture slide.
-
-Layout:
-Vertical stack with bottom-to-top pull flow. Four aligned operator layers with a centered upward arrow path. The diagram should already contain concise labels and be suitable for direct presentation.
-
-Semantic Elements:
-- Four stacked rectangular operator boxes
-- One centered upward arrow connecting all layers
-
-Text Labels:
-- 表扫描
-- 过滤
-- 投影
-- 输出
-- next() 拉取
-- Volcano Model
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- alternating white, light gray, and optional very light blue fills
-- minimal decoration
-- quiet, technical, understated
-- use Chinese labels for process descriptions
-- keep English only for method name next()
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank placeholder boxes
-- no glossy effect
-- no saturated colors
-- no dramatic lighting
-- no 3D rendering
-```
-
 **讲授建议（约 5 分钟）**：
 - 火山模型是辅助理解 SELECT 流程，不是上午的主角
 - 讲清“上层 next() 向下游要数据”即可，不要展开算子优化
+- 这页建议用“老师问学生要作业，学生再问下一位同学要作业”这种一层层往下要数据的方式来类比，帮助学生先抓住“谁向谁要数据”这个动作
+- 不要讲得太学术，只要学生能明白：查询不是一下子把所有结果都准备好，而是上一层需要时，下一层再给一点，这就够了
 
 ---
 
-## 第 12 页：实战任务 - Drop Table 实现
+## 第 13 页：实战任务 - Drop Table 实现
 
 **内容：**
 - 目标：实现 DROP TABLE 语句
@@ -470,10 +350,12 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这一页是从“理解系统”切换到“开始实现”的桥
 - 不用急着讲代码，先让学生接受一个核心方法：沿着 CREATE 的反方向推 DROP
+- 这里要把“做功能不是从零想起，而是先找对照物”这个开发方法讲出来。对大二学生来说，这种方法比具体代码更重要，因为它能降低他们面对陌生工程时的畏难感
+- 可以直接说：你们以后做课程设计或者比赛项目也是一样，新增一个功能时，先找系统里最像的旧功能，顺着它改，远比凭空写可靠
 
 ---
 
-## 第 13 页：Drop Table 完整调用链
+## 第 14 页：Drop Table 完整调用链
 
 **内容：**
 - 代码路径流程图
@@ -494,10 +376,13 @@ Negative Constraints:
 **讲授建议（约 10 分钟）**：
 - 这页适合配合代码演示一起讲，而不是脱离工程空讲
 - 要让学生知道自己真正要改的文件并不多，但链路必须清楚
+- 这页的目标是帮学生建立“我接下来应该从哪里点进去”的路线感，而不是要求他们把七个步骤全部背下来
+- 可以反复强调一个实验课里的经验：真正写代码时，链路越长，越要先把关键节点记住，否则很容易在工程里点着点着就丢了
+- 对基础较弱的同学，至少要让他们记住三件事：SQL 从哪里进、语句对象在哪里形成、最后真正改表的是 `Db::drop_table`
 
 ---
 
-## 第 14 页：关键代码解析 - Db::drop_table
+## 第 15 页：关键代码解析 - Db::drop_table
 
 **内容：**
 - 核心逻辑（伪代码展示）
@@ -513,10 +398,13 @@ Negative Constraints:
 **讲授建议（约 10 分钟）**：
 - 这一页讲“做了什么”和“为什么这样做”，不要逐行念伪代码
 - 尤其要强调先释放对象、再删文件这类顺序意识
+- 这里可以顺手培养学生的工程顺序意识：很多 bug 不是“不会写”，而是“顺序写错了”。比如对象还在用，文件先删了；或者内存里的表还没移除，外部资源已经动了
+- 不需要把资源管理讲成 C++ 高阶专题，只要让他们知道：代码里每一步都对应一个状态变化，顺序乱了，系统就可能出错
+- 对学生来说，这页最应该带走的是“先检查、再移除、再释放、最后清理外部资源”这种思考框架
 
 ---
 
-## 第 15 页：实践任务与总结
+## 第 16 页：实践任务与总结
 
 **内容：**
 - 任务清单和今日要点
@@ -536,10 +424,12 @@ Negative Constraints:
 **讲授建议（约 3 分钟）**：
 - 这一页之后应切换到学生实践时间
 - 任务描述要足够具体，让学生知道先做哪一步，再做哪一步
+- 实验课里最怕的是学生到了实践阶段不知道第一步点哪里，所以任务清单一定要写得像操作说明，而不是像总结口号
+- 可以明确给出一个顺序：先切分支或确认代码版本，再找调用链，再补实现，最后跑测试和打断点验证。这样基础较弱的学生也能按步骤往前推
 
 ---
 
-## 第 16 页：Q&A / 休息
+## 第 17 页：Q&A / 休息
 
 **内容：**
 - 问题时间
@@ -573,16 +463,3 @@ Negative Constraints:
 | 15 | 任务总结图 | **PPT 原生** | 检查项列表，纯排版 |
 
 ---
-
-## 提示词使用说明
-
-1. **制图策略分离**：涉及大量文字对齐、具体代码引用和检查表（Checklist）的页面，不要使用 AI 图像模型，坚定使用 PPT 原生 SmartArt 和表格以保证修改灵活性和精确性。
-2. **AI优先出成品图**：适合 AI 的概念图、结构图、流程图，优先让它直接生成可上屏的成品图，不再默认只出空底图。
-3. **优先重绘简单结构图**：像 SQL 流程、火山模型、CREATE/DROP 对照、调用链这类规则框图，优先用 PPT 重绘。它们不是艺术插图，而是教学结构图，准确性和可修改性比“生成感”重要。
-4. **谨慎复用已提取图片**：第6、8、10页若已有图片非常清晰且信息准确，可以复用；如果风格与整套 PPT 差异太大，建议按现有内容重绘。
-5. **统一风格准则**：
-   - 所有 AI 图片必须严格遵守《CLAUDE.md》提出的学术论文风格：低饱和、克制、清晰。
-   - 主体保持白底、深灰线条、浅灰填充，允许少量浅灰蓝作为强调色，但只能点到为止。
-   - 图形以规整几何块为主，可少量圆角，但不要阴影、不要发光、不要营销海报感。
-   - 流程说明、模块名称、解释性标签优先使用中文；只有代码标识符、类型名、类名等才保留英文。
-6. **环境配置页面控制原则**：环境安装属于课前准备或现场演示内容，PPT 中只保留一页“环境检查表”，用于确认是否进入主线教学，不展开安装命令和报错细节。

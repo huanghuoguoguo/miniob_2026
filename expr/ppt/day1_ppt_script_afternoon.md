@@ -1,11 +1,9 @@
-# Day1 下午 PPT 脚本：B+树与多列索引实现
+# B+树与多列索引实现 PPT 脚本
 
 ## PPT 整体信息
-- **标题**：第一天下午：B+树与多列索引实现
+- **标题**：B+树与多列索引实现
 - **时长**：约 3 小时
 - **目标受众**：大二学生，具备 C++ 和数据结构基础
-
-> **图片风格规范**：参考 `/root/workspace/miniob_2026/expr/CLAUDE.md` 中的图片生成规范
 
 ## 教学目标与讲授主线
 
@@ -27,15 +25,13 @@
 
 ## 建议时间安排（3 小时）
 
-- 0-10 分钟：上午回顾，建立下午主线
-- 10-35 分钟：为什么需要索引，为什么 Hash/红黑树不适合磁盘数据库
-- 35-65 分钟：B+树结构、查找路径、分裂直觉
-- 65-90 分钟：MiniOB 索引代码结构与 CREATE INDEX 调用链
-- 90-100 分钟：休息或现场答疑
-- 100-130 分钟：从单列索引到多列索引，定位四个关键修改点
-- 130-145 分钟：字典序比较与最左前缀原则
-- 145-175 分钟：学生实践与操作，你巡回答疑
-- 175-180 分钟：总结与延伸问题
+- 0-40 分钟：前序回顾，建立本节主线；讲为什么需要索引，以及为什么 Hash/红黑树不适合磁盘数据库
+- 40-50 分钟：休息
+- 50-90 分钟：讲 B+树结构、查找路径、分裂直觉；现场演示 MiniOB 索引代码结构与 CREATE INDEX 调用链
+- 90-100 分钟：休息
+- 100-140 分钟：从单列索引到多列索引，定位四个关键修改点；讲字典序比较与最左前缀原则
+- 140-150 分钟：休息
+- 150-180 分钟：学生上机实现与验证，你巡回答疑；最后统一总结与延伸问题
 
 ## 使用原则
 
@@ -49,7 +45,7 @@
 ## 第 1 页：封面
 
 **内容：**
-- 主标题：MiniOB 数据库内核实战 - Day 1 下午
+- 主标题：MiniOB 数据库内核实战
 - 副标题：B+树与多列索引实现
 
 **图片：** 无需图片
@@ -57,13 +53,15 @@
 **讲授建议（约 2 分钟）**：
 - 开场直接点题：下午的任务是把“为什么需要索引”连到“怎么在 MiniOB 里实现”
 - 不展开背景，尽快进入问题场景
+- 可以先帮学生把上午和下午接起来：上午解决的是“SQL 怎么走到存储层”，下午解决的是“数据一多，为什么还必须要有索引”
+- 对大二学生来说，开场不要先抛 B+树定义，而是先告诉他们：今天这节课的核心不是背树，而是理解“为什么数据库不会直接拿你学过的普通树结构来用”
 
 ---
 
-## 第 2 页：上午回顾
+## 第 2 页：前序回顾
 
 **内容：**
-- 上午我们学了什么？
+- 前面我们学了什么？
   - SQL 处理全流程
   - 调试技巧
   - Drop Table 实现
@@ -79,6 +77,8 @@
 **讲授建议（约 5 分钟）**：
 - 回顾只讲“与下午相关的部分”，不要完整复述上午内容
 - 要把学生注意力拉回到“今天已经知道 SQL 如何走，现在要解决查询效率问题”
+- 回顾时不要追求完整，而是帮助学生建立连续感：前面已经知道一条 SQL 怎么进入系统，接下来要回答的是“查数据时为什么不能每次都从头扫到尾”
+- 可以直接提醒学生：工程里的很多模块不是孤立的，索引不是突然冒出来的新主题，而是前面执行链路继续向下自然长出来的一层能力
 
 ---
 
@@ -98,51 +98,12 @@
 - 中间：竖向分隔线
 - 底部：只保留 `O(n)` vs `O(log n)`、`全表扫描` vs `3-4次I/O`
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style comparison diagram between non-indexed scan and indexed lookup for a database lecture slide.
-
-Layout:
-Left-right comparison with a clear center separator. Left side shows sequential scanning across many data pages. Right side shows a compact B+Tree lookup path. The diagram should already contain concise labels and be presentation-ready.
-
-Semantic Elements:
-- Left side: a row of small page blocks with a winding scan path
-- Right side: a compact three-level B+Tree with one highlighted root-to-leaf path
-- Center separator line
-
-Text Labels:
-- 无索引
-- 有索引
-- 全表扫描
-- B+树查找
-- O(n)
-- O(log n)
-- 需要扫描很多页
-- 只走一条查找路径
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray fills with optional very light desaturated blue emphasis
-- minimal decoration
-- professional and understated
-- use Chinese labels for explanations
-- keep English only for O(n), O(log n), B+Tree if needed
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank placeholder blocks
-- no generic comparison wireframe
-- no saturated red-green contrast
-- no 3D effect
-- no heavy shadows
-```
-
 **讲授建议（约 8 分钟）**：
 - 这页的任务是建立索引的必要性，不是讲复杂度定义
 - 你要反复强调：数据库关心的不只是比较次数，而是磁盘 I/O 次数
+- 这页最好从学生熟悉的经验切入，比如数组里找一个元素，数据量小时从头扫也没什么感觉，但数据一大、而且数据又不在内存里时，代价就完全不一样了
+- 对还没学过太多存储系统知识的学生，不要执着解释大 O 记号本身，而是让他们先接受一个直觉：数据库最怕的不是多做几次 if，而是多碰几次磁盘
+- 只要学生能意识到“全表扫描在数据库里很贵”，这一页就达标，不必把所有性能细节展开
 
 ---
 
@@ -163,6 +124,9 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页核心不是背表格，而是说明“查找复杂度一样，不代表适合数据库”
 - 重点口头解释“范围查询”和“磁盘友好”这两列
+- 这里很适合纠正学生的一个自然想法：他们刚学完数据结构，往往会觉得谁时间复杂度好就选谁，但数据库不是只看算法课上的那一列复杂度
+- “范围查询”可以用非常生活化的例子讲，比如查分数 80 到 90、年龄 20 到 25，这种连续区间在数据库里很常见，而哈希结构并不擅长做这件事
+- “磁盘友好”只要讲成一句话就够了：一次读进来，希望能顺带拿到更多有用信息，而不是每次只得到一点点
 
 ---
 
@@ -175,47 +139,12 @@ Negative Constraints:
 **图片：** 磁盘结构示意图
 文件：`expr/img/day1_pm_p05_disk_units_read_patterns.png`
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style disk storage hierarchy and read-pattern comparison diagram.
-
-Layout:
-Left side shows nested storage units. Right side shows sequential read versus random read using two contrasting path shapes. Keep the composition simple and balanced.
-
-Semantic Elements:
-- Nested rectangles for disk, page/block, and sector
-- One straight path for sequential read
-- One zigzag path for random read
-
-Text Labels:
-- 磁盘
-- 页/块
-- 扇区
-- 顺序读
-- 随机读
-- 连续读取，较快
-- 跳跃读取，较慢
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray fills with optional very light blue emphasis
-- minimal decoration
-- use Chinese labels for process descriptions
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank nested boxes
-- no saturated colors
-- no heavy shadows
-- no 3D rendering
-```
 
 **讲授建议（约 6 分钟）**：
 - 这页是承上启下，目的只是解释“为什么树高会变成 I/O 次数”
 - 不要把磁盘结构展开成独立知识模块
+- 这一页不要讲太硬核的硬件细节，只要让学生知道：磁盘读写不是按一个变量一个变量去拿，而是按块、按页去拿
+- 可以用“去仓库拿货不是一颗一颗拿，而是一箱一箱拿”这种类比，帮助学生理解为什么数据库设计总是在想办法让一次 I/O 带回更多内容
 
 ---
 
@@ -233,48 +162,12 @@ Negative Constraints:
 - 右边统一高度标尺
 - 页面只保留 `3-4次磁盘I/O` 与 `24次磁盘I/O` 这类量级对比
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style height comparison diagram between a B+Tree and a red-black tree for database indexing.
-
-Layout:
-Left-right comparison with a shared vertical height reference. The B+Tree should appear short and wide; the red-black tree should appear tall and narrow.
-
-Semantic Elements:
-- Left: a compact multi-way B+Tree
-- Right: a tall binary-tree-like structure
-- Shared height reference line
-
-Text Labels:
-- B+树
-- 红黑树
-- 3层
-- 24层
-- 3-4次磁盘I/O
-- 24次磁盘I/O
-- 更矮更胖
-- 更高更瘦
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray fills with optional very light blue emphasis
-- minimal decoration
-- use Chinese labels for explanatory text
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank trees without semantics
-- no saturated colors
-- no heavy shadows
-- no cartoon style
-```
 
 **讲授建议（约 8 分钟）**：
 - 这页是全场最关键的原理论证页之一
 - 学生只要记住一句话：数据库偏爱矮胖树，因为一次 I/O 要尽量带更多分支信息
+- 对这个年级的学生，不要要求他们现场推导树高公式，只要把“高瘦树意味着要一层层多次往下找，矮胖树意味着层数更少”讲清楚即可
+- 可以反复强调：B+树赢的不是“神秘”，而是“更适合页式存储和磁盘读取方式”
 
 ---
 
@@ -287,47 +180,13 @@ Negative Constraints:
 **图片：** B+树结构示意图
 文件：`expr/img/day1_pm_p07_bplustree_structure.png`
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style B+Tree structure diagram for teaching.
-
-Layout:
-Three-level tree layout with root at top, internal nodes in the middle, leaf nodes at the bottom, and horizontal links across the leaves.
-
-Semantic Elements:
-- Root node
-- Internal nodes
-- Leaf nodes
-- Horizontal linked-list arrows between leaves
-
-Text Labels:
-- 内部节点
-- 叶子节点
-- 叶子链表
-- 只存索引键
-- 有序数据入口
-- 支持范围查询
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray and very light blue fills
-- minimal decoration
-- use Chinese labels for explanations
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank unlabeled tree
-- no saturated colors
-- no heavy shadows
-- no 3D effect
-```
 
 **讲授建议（约 8 分钟）**：
 - 这一页重点讲三件事：内部节点只导航、叶子节点才是有序数据入口、叶子链表支持范围查询
 - 不要在这页讲完整插入删除细节
+- 这里学生很容易把“树里每个节点都放数据”当成默认印象，所以要明确指出：B+树里内部节点更像路标，真正按顺序组织的数据主要在叶子节点
+- 叶子节点链表可以讲得很直白：既然数据已经排好序了，再把叶子连起来，范围查询时就不用一次次回到上层重新找
+- 这页的目标是先把结构看懂，而不是把所有操作都塞进来
 
 ---
 
@@ -346,6 +205,8 @@ Negative Constraints:
 **讲授建议（约 6 分钟）**：
 - 这一页的目标是让学生形成“查找就是一路向下缩小范围”的直觉
 - 强调它和二叉搜索树相似，但每层扇出更大、层数更少
+- 这里可以借学生已有的二叉搜索树经验做迁移：思路还是“比较后决定往哪边走”，只是 B+树不是二选一，而是一层能分出更多路
+- 讲到“不断缩小范围”就可以收，不需要把页号、偏移量这些实现细节提前带进来
 
 ---
 
@@ -365,6 +226,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这一页只要求学生知道“满了会分裂，并把分隔信息往上推”
 - 删除合并如果时间不足，可以口头一句带过，不必在 PPT 上并列展开
+- 插入分裂这一页不要追求学生完全会手推过程，而是让他们知道 B+树不是静态结构，插入数据后它会自己调整形状
+- 对基础较弱的学生，只要记住“节点满了就拆开，父节点要同步更新导航信息”就已经足够支撑后面看代码
 
 ---
 
@@ -383,6 +246,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这一页要把概念切回代码世界
 - 不是做完整 UML 课，而是帮学生建立改代码时的文件定位感
+- 大二学生第一次看这种工程代码时，很容易一看到类图就慌，所以你要明确告诉他们：今天不是要记完整继承关系，而是先知道“真正干活的是哪一层”
+- 可以把这几层讲成包装关系：最外层接接口，中间层组织逻辑，最里层真正去操作 B+树
 
 ---
 
@@ -394,50 +259,12 @@ Negative Constraints:
 **图片：** 索引创建调用链
 文件：`expr/img/day1_pm_p11_create_index_flow.png`
 
-**提示词（AI仅备用）：**
-```text
-Task:
-Create a finished academic-style vertical flowchart for CREATE INDEX execution in a database kernel.
-
-Layout:
-Top-to-bottom flow with evenly spaced stages and one concise annotation area on the right. The flowchart should already contain labels directly in the diagram.
-
-Semantic Elements:
-- One SQL input box at the top
-- Six vertically stacked step boxes
-- Thin downward arrows
-- One side annotation box
-
-Text Labels:
-- CREATE INDEX idx ON t(col)
-- 语法解析
-- 语义检查
-- 执行阶段
-- Table::create_index()
-- BplusTreeIndex::create
-- 创建 .index 文件
-- 遍历记录回填索引
-
-Style Constraints:
-- clean academic paper illustration
-- white background
-- thin dark gray lines
-- light gray and very light blue fills
-- minimal decoration
-- use Chinese labels for process descriptions
-- keep English only for code identifiers
-- finished presentation-ready diagram
-
-Negative Constraints:
-- no blank stage placeholders
-- no saturated colors
-- no heavy shadows
-- no poster style
-```
 
 **讲授建议（约 10 分钟）**：
 - 这页要和现场代码演示强绑定，单独放在 PPT 上讲会偏空
 - 重点告诉学生：多列索引不是从零做一套，而是在现有创建流程上扩展字段处理方式
+- 这里很适合强化一种工程方法：改功能时先跟现有调用链，而不是一上来全局搜文件乱改
+- 你可以直接告诉学生：今天做多列索引，本质上不是推翻单列索引重做，而是在已有路径上把“一个字段”变成“多个字段”
 
 ---
 
@@ -458,6 +285,8 @@ Negative Constraints:
 **讲授建议（约 10 分钟）**：
 - 这一页是下午实践前最重要的“落地点”页面
 - 学生必须在这里知道自己改哪几类文件，否则后面容易乱翻代码
+- 这页建议讲得非常操作化，让学生形成“先改 parser，再改语义，再改元数据，再改索引键处理”这样的顺序感
+- 对基础较弱的学生来说，最有帮助的不是理论，而是知道第一步该点哪个文件、第二步该看哪个结构
 
 ---
 
@@ -476,6 +305,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 这页一定要讲慢一点，因为它直接决定多列索引键如何比较
 - 只要学生理解“前一列先比，相同再比后一列”，后面的实现就能跟上
+- 字典序比较不要讲成数学定义，直接按字符串比较的生活经验来讲更自然，比如姓相同再比名，第一项相同再看第二项
+- 这页最好多举两个短例子，让学生把“比较规则”真正变成脑中的操作步骤
 
 ---
 
@@ -496,6 +327,8 @@ Negative Constraints:
 **讲授建议（约 8 分钟）**：
 - 不要只给规则，要结合这页排序后的样例解释“为什么 age 单独查不连续”
 - 这页是帮助学生把数据排列方式和查询规则真正对应起来
+- 这是一个学生很容易“背规则但没懂原因”的点，所以一定要把索引中数据的排列方式和查询能不能连续命中联系起来讲
+- 讲的时候可以反复指着样例说：如果先按 `name` 排，`age=25` 的记录会散在不同名字下面，所以不能像查 `name='Alice'` 那样直接形成一段连续区域
 
 ---
 
@@ -519,6 +352,8 @@ Negative Constraints:
 **讲授建议（约 3 分钟）**：
 - 讲到这里就应切换到学生实践，不要继续扩展原理
 - 任务描述尽量按顺序给，让学生先跑通再优化
+- 任务说明要足够具体，避免学生一上来就在四五个文件里来回跳
+- 可以明确要求他们先完成最小可运行版本，再考虑代码是否优雅，这样更符合实验课节奏
 
 ---
 
@@ -537,6 +372,7 @@ Negative Constraints:
 **讲授建议（约 3 分钟）**：
 - 这页更适合做总结和课后思考，不建议在主线里展开太久
 - 如果实践时间紧，这页可以压缩成口头提问
+- 对大二学生来说，这页的价值主要是帮他们把今天学到的结论再往前推半步，不是要求他们现场回答得很完整
 
 ---
 
@@ -551,6 +387,7 @@ Negative Constraints:
 **讲授建议**：
 - 如果实践阶段问题较多，可以把这页作为机动答疑，而不必严格保留
 - 结束时把“明天会继续从正确性和并发角度补系统能力”点一下即可
+- 收尾时不要再加新知识，重点是帮学生把“索引为什么这样设计、代码改哪里、实现时注意什么”这三件事收住
 
 ---
 
@@ -575,15 +412,3 @@ Negative Constraints:
 | 16 | 思考题图 | **PPT 原生** | 问题页直接列表即可 |
 
 ---
-
-## 提示词使用说明
-
-1. **制图策略分离**：表格、修改点、示例比较、规则说明这类页面，优先使用 PPT 原生绘制，避免 AI 造成文字错误和结构漂移。
-2. **优先使用已提取图片**：第5、7、11页如已有内容清晰、风格不冲突的图片，可直接复用；否则建议按讲法重绘。
-3. **AI优先直接出成品图**：适合 AI 的概念图、结构图、流程图，优先让它直接生成可上屏的成品图；只有效果不稳定时才退回到“底图 + PPT 补字”模式。
-4. **统一风格准则**：
-   - 所有 AI 图片必须遵循《CLAUDE.md》的学术论文风格：低饱和、克制、清晰。
-   - 主体保持白底、深灰线条、浅灰填充，允许少量浅灰蓝作为强调色。
-   - 禁止使用饱和大色块、重阴影、3D 效果、营销海报风格。
-   - 能用中文的地方尽量用中文，尤其是流程说明、模块说明、结论性标签；只有代码名、类型名、类名保留英文。
-5. **下午课堂控制原则**：不要把时间耗在 B+树复杂细节推导上，必须把足够时间留给多列索引实现和学生实践。
