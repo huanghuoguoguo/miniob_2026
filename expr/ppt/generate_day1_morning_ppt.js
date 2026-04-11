@@ -151,6 +151,8 @@ function mapSlide() {
   slide.addShape(pptx.ShapeType.line, { x: 5.64, y: 3.5, w: 0.28, h: 0, line: { color: C.accent, width: 1.2, endArrowType: "triangle" } });
   slide.addShape(pptx.ShapeType.line, { x: 8.2, y: 3.09, w: 0.14, h: 0, line: { color: C.accent, width: 1.2, endArrowType: "triangle" } });
 
+  slide.addNotes("发散角度：\n- 问学生：你们做项目时想过数据会丢吗？\n- 写文件时如果程序崩溃，文件是完整的还是半截？\n- JSON/YAML 配置文件能存，但程序运行时的变量为什么不能直接存？\n- 如果让学生自己设计一个能存数据的系统，他们会怎么设计？\n- 这些问题主要是让学生意识到：自己早就遇到过这些问题，只是当时可能没系统想过。");
+
   footer(slide, PAGE_LABEL, 5, C);
 }
 
@@ -170,6 +172,7 @@ function problemsSlide() {
     slide.addText("→", { x: 5.45, y: y + 0.12, w: 0.28, h: 0.18, fontSize: 16, color: C.accent, align: "center", margin: 0 });
     slide.addText(r[2], { x: 5.88, y: y + 0.15, w: 2.25, h: 0.18, fontSize: 12.5, bold: true, color: C.ink, margin: 0 });
   });
+  slide.addNotes("发散角度 - 和 ACID 结合：\n- 持久化对应 ACID 的 D（Durability）：数据写入后不能丢\n- 索引/查询效率和 C（Consistency）有关：索引结构必须和实际数据保持一致\n- 磁盘交互和 A（Atomicity）有关：写磁盘中途崩溃会不会出现半截数据？\n- 问学生：听说过 ACID 吗？想想四个字母分别对应什么问题\n- 如果还没接触过 ACID，先种印象：后面两天会反复提到这四个字母，今天先知道它们是从真实问题提炼出来的。");
   footer(slide, PAGE_LABEL, 6, C);
 }
 
