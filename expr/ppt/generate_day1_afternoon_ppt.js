@@ -319,8 +319,8 @@ function extensionSlide() {
 function qaSlide() {
   const slide = pptx.addSlide();
   baseSlide(slide, "Q&A / 结束", KICKER, C);
-  slide.addText("问题时间", { x: 0.9, y: 2.05, w: 2.0, h: 0.3, fontSize: 24, bold: true, color: C.ink, margin: 0 });
-  slide.addText("明天预告：事务与并发控制", { x: 0.9, y: 2.82, w: 4.6, h: 0.3, fontSize: 20, bold: true, color: C.navy, margin: 0 });
+  slide.addText("问题时间", { x: 0.9, y: 2.1, w: 2.2, h: 0.32, fontSize: 24, bold: true, color: C.ink, margin: 0 });
+  slide.addText("实践时间", { x: 0.9, y: 2.78, w: 2.4, h: 0.32, fontSize: 24, bold: true, color: C.navy, margin: 0 });
   footer(slide, PAGE_LABEL, 17, C);
 }
 
