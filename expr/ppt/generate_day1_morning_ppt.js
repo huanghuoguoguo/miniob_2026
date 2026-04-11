@@ -59,7 +59,7 @@ function twoDayOverviewSlide() {
     slide.addText(title, { x: x + 0.16, y: y + 0.14, w: 1.25, h: 0.18, fontSize: 15, bold: true, color: C.navy, margin: 0 });
     slide.addText(body, { x: x + 1.42, y: y + 0.12, w: 1.95, h: 0.58, fontSize: 11.5, color: C.ink, margin: 0, valign: "mid" });
   });
-  slide.addText("课程节奏：先建立整体地图，再逐步进入索引、记录管理与缓冲池。", { x: 0.72, y: 4.63, w: 7.8, h: 0.16, fontSize: 11.5, color: C.steel, margin: 0 });
+  slide.addText("今天上午先打通链路，下午再深入索引细节。", { x: 0.72, y: 4.63, w: 7.8, h: 0.16, fontSize: 11.5, color: C.steel, margin: 0 });
   footer(slide, PAGE_LABEL, 2, C);
 }
 
