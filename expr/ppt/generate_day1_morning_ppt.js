@@ -224,7 +224,7 @@ function sqlFlowSlide() {
   slide.addText("一条 SQL 的一生：", { x: 0.48, y: 1.42, w: 1.6, h: 0.2, fontSize: 13, color: C.steel, margin: 0 });
   bullets(slide, ["ParseStage：词法 + 语法解析 → ParsedSqlNode", "ResolveStage：语义分析 → Statement", "Optimizer：生成执行计划（DML）", "ExecuteStage：执行器 → 调用存储层"], 0.68, 1.8, 4.35, 1.65, { fontSize: 13.5 });
   addImageFrame(slide, img("day1_am_p08_sql_pipeline.png"), 5.18, 1.82, 4.0, 2.55);
-  slide.addText("口头补充：DDL 和 DML 会在这里分流，DROP TABLE 不一定走完整优化器路径。", { x: 0.7, y: 4.55, w: 8.0, h: 0.18, fontSize: 11.5, color: C.steel, margin: 0 });
+  slide.addNotes("DDL 和 DML 会在这里分流，DROP TABLE 不一定走完整优化器路径。");
   footer(slide, PAGE_LABEL, 9, C);
 }
 
