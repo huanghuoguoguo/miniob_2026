@@ -16,7 +16,7 @@ const {
   addImageFrame,
   flowArrow,
   tableCell,
-  addCoverSlide,
+  addTeachingCoverSlide,
 } = require("./ppt_common");
 
 const C = TJUT_RED_PALETTE;
@@ -32,13 +32,18 @@ const pptx = createPptx({
 // ============================================================
 
 function coverSlide() {
-  addCoverSlide(pptx, {
+  addTeachingCoverSlide(pptx, {
     palette: C,
-    headingTexts: [
-      { text: "MiniOB 数据库内核实战", x: 0.72, y: 1.72, w: 8.2, h: 0.52, fontSize: 28, bold: true, color: C.ink },
-      { text: "Buffer Pool 缓冲池", x: 0.72, y: 2.55, w: 8.2, h: 0.42, fontSize: 22, bold: true, color: C.navy },
+    leadTitle: "Buffer Pool",
+    mainTitle: "缓冲池",
+    summary: "最后半天把“页为什么要缓存、页在内存里怎么活、什么时候刷回磁盘”这一层真正讲清楚。",
+    chips: [
+      { text: "理解缓存", x: 1.05, w: 1.32 },
+      { text: "看懂页生命周期", x: 2.53, w: 1.86 },
+      { text: "掌握刷盘与淘汰", x: 4.56, w: 1.86 },
     ],
-    images: [],
+    agenda: ["前序回顾", "Page Cache", "Frame 管理", "刷盘与淘汰"],
+    notes: "封面口播：\n- 最后一场收束到 Buffer Pool，把数据库为什么要自己管缓存讲明白。\n- 这一场会反复对比 Page Cache 和 Buffer Pool。\n- 目标是让学生理解页在内存里的生命周期，而不是只记住名词。",
   });
 }
 
@@ -143,7 +148,7 @@ function structureSlide() {
     "还需要页号到 Frame 的定位关系，否则找页就会退化成遍历",
     "还需要 LRU 或类似结构，否则无法决定淘汰候选",
   ], 6.2, 1.9, 2.9, 1.7, { fontSize: 13.5 }, C);
-  card(slide, 6.2, 3.95, 2.9, 0.82, "一句话结论", "Buffer Pool 不是“几块缓存”，而是缓存数据、状态管理、定位结构和淘汰机制的组合。", C.blue, C);
+  card(slide, 6.2, 3.95, 2.9, 0.82, "一句话结论", "Buffer Pool 由缓存数据、状态管理、定位结构和淘汰机制一起组成。", C.blue, C);
   footer(slide, "天津理工大学", 8, C);
 }
 
@@ -293,17 +298,76 @@ function debugSlide() {
 function practiceSlide() {
   const slide = pptx.addSlide();
   baseSlide(slide, "实践任务与总结", KICKER, C, C.tjutDark);
-  stepBox(slide, 0.78, 1.82, 4.0, 2.45, "实践任务", "□ 跟一次 `get_this_page()` 的命中与未命中\n□ 跟一次脏页变 `dirty`\n□ 跟一次 `pin/unpin` 与淘汰判断", C.panel, C);
-  stepBox(slide, 5.06, 1.82, 3.78, 2.45, "今日要点", "• Buffer Pool 管页面缓存\n• dirty / pin_count 决定页的生命周期\n• LRU 负责候选顺序，不负责正确性", C.blue, C);
+  slide.addText("Buffer Pool 最怕空听概念不跟状态，所以实践页必须明确告诉学生该看哪些字段、该跟哪些函数。", {
+    x: 0.48, y: 1.42, w: 6.8, h: 0.2, fontSize: 13, color: C.steel, margin: 0,
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 0.72, y: 1.82, w: 4.2, h: 2.72, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: C.panel },
+  });
+  slide.addText("上机顺序", { x: 0.95, y: 2.04, w: 1.2, h: 0.18, fontSize: 17, bold: true, color: C.navy, margin: 0 });
+  const tasks = [
+    ["01", "先跟取页路径", "把 get_this_page() 的命中 / 未命中分清楚"],
+    ["02", "再看脏页变化", "观察 dirty 从 false 到 true 的时机"],
+    ["03", "最后看淘汰条件", "确认 pin_count 什么时候允许页被淘汰"],
+    ["04", "回到刷盘路径", "看 flush_page() 怎样把页真正落回磁盘"],
+  ];
+  tasks.forEach((task, idx) => {
+    const y = 2.38 + idx * 0.5;
+    slide.addText(task[0], { x: 0.98, y, w: 0.34, h: 0.14, fontSize: 10.5, bold: true, color: C.accent, margin: 0 });
+    slide.addText(task[1], { x: 1.42, y: y - 0.01, w: 1.66, h: 0.2, fontSize: 12.2, bold: true, color: C.ink, margin: 0 });
+    slide.addText(task[2], { x: 3.12, y, w: 1.42, h: 0.2, fontSize: 9.8, color: C.steel, margin: 0 });
+  });
+
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 5.15, y: 1.82, w: 3.7, h: 1.18, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: C.blue },
+  });
+  slide.addText("验收标准", { x: 5.38, y: 2.05, w: 1.2, h: 0.18, fontSize: 16.5, bold: true, color: C.navy, margin: 0 });
+  slide.addText("✓ 能解释 Buffer Pool 为什么不等于 Page Cache\n✓ 能说清 dirty / pin_count 的作用\n✓ 能跟到一次刷盘或淘汰判断", {
+    x: 5.38, y: 2.38, w: 2.95, h: 0.44, fontSize: 11.1, color: C.ink, margin: 0,
+  });
+
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 5.15, y: 3.18, w: 3.7, h: 1.36, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: "FFFFFF" },
+  });
+  slide.addText("本节要点", { x: 5.38, y: 3.4, w: 1.85, h: 0.18, fontSize: 16, bold: true, color: C.navy, margin: 0 });
+  slide.addText("1. Buffer Pool 是数据库自己管理的页缓存。\n2. dirty / pin_count 决定页的生命周期。\n3. LRU 管候选顺序，不负责正确性。", {
+    x: 5.38, y: 3.72, w: 3.0, h: 0.62, fontSize: 11.1, color: C.ink, margin: 0,
+  });
+  slide.addNotes("第17页口播：\n- 让学生先跟状态，再回到概念。\n- 验收标准强调字段和函数，不强调背定义。\n- 收束到 Buffer Pool、dirty/pin_count、LRU 三件事。");
   footer(slide, "天津理工大学", 17, C);
 }
 
 function qaSlide() {
   const slide = pptx.addSlide();
   baseSlide(slide, "Q&A / 机动答疑", KICKER, C, C.tjutDark);
-  slide.addText("问题时间", { x: 0.9, y: 1.95, w: 2.0, h: 0.3, fontSize: 24, bold: true, color: C.ink, margin: 0 });
-  slide.addText("机动答疑", { x: 0.9, y: 2.68, w: 2.0, h: 0.3, fontSize: 24, bold: true, color: C.navy, margin: 0 });
-  slide.addText("预告：下一步继续向事务、恢复和更复杂执行机制推进", { x: 0.9, y: 3.5, w: 6.4, h: 0.2, fontSize: 15, color: C.steel, margin: 0 });
+  slide.addText("接下来进入 Buffer Pool 的机动答疑。", { x: 0.78, y: 1.46, w: 4.2, h: 0.2, fontSize: 14, color: C.steel, margin: 0 });
+  const blocks = [
+    [0.82, "现在先做", "先跟一遍 get_this_page()，把命中 / 未命中分清楚", C.panel],
+    [3.48, "遇到问题先问", "这个页为什么还不能淘汰？dirty 和 pin_count 现在是什么值？", "FFFFFF"],
+    [6.14, "还做不出来再问", "把函数入口、页状态和你跟到的刷盘路径说清楚", C.blue],
+  ];
+  blocks.forEach((block, idx) => {
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: block[0], y: 2.0, w: 2.28, h: 1.9, rectRadius: 0.05,
+      line: { color: C.line, width: 1.1 }, fill: { color: block[3] },
+    });
+    slide.addText(block[1], { x: block[0] + 0.2, y: 2.24, w: 1.88, h: 0.18, fontSize: 16, bold: true, color: C.navy, margin: 0 });
+    slide.addText(block[2], { x: block[0] + 0.2, y: 2.62, w: 1.84, h: 0.68, fontSize: 11.1, color: C.ink, margin: 0 });
+    if (idx < blocks.length - 1) {
+      slide.addText("→", { x: block[0] + 2.34, y: 2.8, w: 0.22, h: 0.16, fontSize: 18, color: C.accent, align: "center", margin: 0 });
+    }
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 1.12, y: 4.3, w: 7.7, h: 0.42, rectRadius: 0.03,
+    line: { color: C.line, width: 1 }, fill: { color: "FFFFFF" },
+  });
+  slide.addText("最后半天至少要搞清三件事：Buffer Pool 为什么存在、页什么时候能淘汰、脏页什么时候必须刷回去。", {
+    x: 1.18, y: 4.44, w: 7.56, h: 0.14, fontSize: 11, color: C.steel, align: "center", margin: 0,
+  });
+  slide.addNotes("结束页口播：\n- 提问时一定把页状态说清楚，尤其是 dirty 和 pin_count。\n- 把学生注意力拉回到 Buffer Pool 存在的原因和页生命周期。\n- 这页仍然是“进入实践”的入口，不是散会页。");
   footer(slide, PAGE_LABEL, 18, C);
 }
 

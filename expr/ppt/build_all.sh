@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 #
-# Build all PPT decks from JS generators.
-# Usage: bash expr/ppt/build_all.sh   (from project root)
+# Build PPT decks from JS generators.
+# Usage:
+#   bash expr/ppt/build_all.sh              # build all decks
+#   bash expr/ppt/build_all.sh day1_morning # build one deck
+#   bash expr/ppt/build_all.sh --list       # list available decks
 #
 set -euo pipefail
 
@@ -24,26 +27,60 @@ done
 mkdir -p "$OUTPUT_DIR"
 
 # ── discover generator scripts ──────────────────────────────────────
-mapfile -t GENERATORS < <(find "$SCRIPT_DIR" -maxdepth 1 -name 'generate_*_ppt.js' | sort)
+mapfile -t ALL_GENERATORS < <(find "$SCRIPT_DIR" -maxdepth 1 -name 'generate_*_ppt.js' | sort)
 
-if [[ ${#GENERATORS[@]} -eq 0 ]]; then
+if [[ ${#ALL_GENERATORS[@]} -eq 0 ]]; then
   echo "ERROR: no generate_*_ppt.js scripts found in $SCRIPT_DIR" >&2
   exit 1
 fi
 
-echo "=== Found ${#GENERATORS[@]} generator(s) ==="
+if [[ "${1:-}" == "--list" ]]; then
+  echo "Available decks:"
+  for gen in "${ALL_GENERATORS[@]}"; do
+    base="$(basename "$gen" '.js')"
+    deck="${base#generate_}"
+    deck="${deck%_ppt}"
+    echo "  $deck"
+  done
+  exit 0
+fi
+
+GENERATORS=()
+if [[ $# -eq 0 ]]; then
+  GENERATORS=("${ALL_GENERATORS[@]}")
+else
+  for gen in "${ALL_GENERATORS[@]}"; do
+    base="$(basename "$gen" '.js')"
+    deck="${base#generate_}"
+    deck="${deck%_ppt}"
+    for selector in "$@"; do
+      if [[ "$deck" == "$selector" || "$deck" == *"$selector"* || "$base" == *"$selector"* ]]; then
+        GENERATORS+=("$gen")
+        break
+      fi
+    done
+  done
+fi
+
+if [[ ${#GENERATORS[@]} -eq 0 ]]; then
+  echo "ERROR: no generators matched selectors: $*" >&2
+  exit 1
+fi
+
+echo "=== Selected ${#GENERATORS[@]} generator(s) ==="
 
 # ── run each generator ───────────────────────────────────────────────
 echo "=== Generating PPTX files ==="
+PPTX_FILES=()
 
 for gen in "${GENERATORS[@]}"; do
   name="$(basename "$gen")"
   echo "--- Running $name ..."
   node "$gen"
+  deck="${name#generate_}"
+  deck="${deck%_ppt.js}"
+  PPTX_FILES+=("$OUTPUT_DIR/${deck}_generated.pptx")
 done
-
-# ── collect generated PPTX files and convert to PDF ─────────────────
-mapfile -t PPTX_FILES < <(find "$OUTPUT_DIR" -maxdepth 1 -name '*_generated.pptx' | sort)
 
 if [[ ${#PPTX_FILES[@]} -eq 0 ]]; then
   echo "WARNING: no *_generated.pptx files found in $OUTPUT_DIR" >&2
@@ -53,6 +90,10 @@ fi
 echo "=== Converting ${#PPTX_FILES[@]} PPTX file(s) to PDF ==="
 
 for pptx in "${PPTX_FILES[@]}"; do
+  if [[ ! -f "$pptx" ]]; then
+    echo "WARNING: generated PPTX not found: $pptx" >&2
+    continue
+  fi
   name="$(basename "$pptx")"
   echo "--- Converting $name ..."
   soffice --headless --convert-to pdf --outdir "$OUTPUT_DIR" "$pptx"

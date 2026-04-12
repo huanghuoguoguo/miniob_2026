@@ -16,7 +16,7 @@ const {
   addImageFrame,
   flowArrow,
   tableCell,
-  addCoverSlide,
+  addTeachingCoverSlide,
 } = require("./ppt_common");
 
 const C = TJUT_RED_PALETTE;
@@ -32,13 +32,18 @@ const pptx = createPptx({
 // ============================================================
 
 function coverSlide() {
-  addCoverSlide(pptx, {
+  addTeachingCoverSlide(pptx, {
     palette: C,
-    headingTexts: [
-      { text: "MiniOB 数据库内核实战", x: 0.72, y: 1.72, w: 8.2, h: 0.52, fontSize: 28, bold: true, color: C.ink },
-      { text: "B+树与多列索引实现", x: 0.72, y: 2.55, w: 8.2, h: 0.42, fontSize: 22, bold: true, color: C.navy },
+    leadTitle: "B+树与",
+    mainTitle: "多列索引实现",
+    summary: "下午主线是把“为什么需要索引、为什么是 B+树、为什么多列索引不能乱拼”这三件事讲透。",
+    chips: [
+      { text: "理解索引", x: 1.05, w: 1.32 },
+      { text: "看懂 B+树", x: 2.53, w: 1.52 },
+      { text: "实现多列索引", x: 4.22, w: 1.86 },
     ],
-    images: [],
+    agenda: ["前序回顾", "B+树结构", "代码结构", "索引实战"],
+    notes: "封面口播：\n- 下午主线是理解索引、看懂 B+树、完成多列索引。\n- 这一场会比上午更偏数据结构与实现细节，但仍然先立地图再写代码。\n- 目标放在知道为什么数据库索引最后会选 B+树。",
   });
 }
 
@@ -120,7 +125,7 @@ function diskSlide() {
   addImageFrame(slide, img("day1_pm_p05_disk_units_read_patterns.png"), 0.72, 1.66, 4.65, 3.05, C);
   bullets(slide, [
     "扇区、块/页、磁盘页是存储世界的基本单位",
-    "数据库读写不是一个字节一个字节来，而是按页读写",
+    "数据库读写按页进行，不会按一个字节一个字节来",
     "顺序读更快，随机读更慢，所以树高会直接映射到 I/O 次数",
   ], 5.75, 1.9, 3.1, 1.45, { fontSize: 14 }, C);
   footer(slide, PAGE_LABEL, 5, C);
@@ -293,8 +298,45 @@ function prefixSlide() {
 function practiceSlide() {
   const slide = pptx.addSlide();
   baseSlide(slide, "实践任务与总结", KICKER, C);
-  stepBox(slide, 0.78, 1.82, 4.0, 2.45, "实践任务", "□ 查看feature/multi-column-index分支代码\n□ 独立实现多列索引功能\n□ 编写测试用例验证CREATE INDEX", C.panel, C);
-  stepBox(slide, 5.06, 1.82, 3.78, 2.45, "今日要点", "• B+树适合磁盘数据库: 矮胖、页对齐、范围查询\n• 多列索引使用字典序比较\n• 最左前缀原则决定索引使用", C.blue, C);
+  slide.addText("索引题最怕的是概念懂一点、代码改一点、测试却不知道从哪里下手，所以这里把顺序写死。", {
+    x: 0.48, y: 1.42, w: 6.6, h: 0.2, fontSize: 13, color: C.steel, margin: 0,
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 0.72, y: 1.82, w: 4.2, h: 2.72, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: C.panel },
+  });
+  slide.addText("上机顺序", { x: 0.95, y: 2.04, w: 1.2, h: 0.18, fontSize: 17, bold: true, color: C.navy, margin: 0 });
+  const tasks = [
+    ["01", "先看对照实现", "先从单列索引和已有比较逻辑读起"],
+    ["02", "补多列比较", "保证比较规则是字典序而不是逐字段乱拼"],
+    ["03", "补创建与查询验证", "至少准备 CREATE INDEX 和命中索引的 SQL"],
+    ["04", "回到最左前缀检查", "确认哪些查询能用，哪些不能用"],
+  ];
+  tasks.forEach((task, idx) => {
+    const y = 2.38 + idx * 0.5;
+    slide.addText(task[0], { x: 0.98, y, w: 0.34, h: 0.14, fontSize: 10.5, bold: true, color: C.accent, margin: 0 });
+    slide.addText(task[1], { x: 1.42, y: y - 0.01, w: 1.68, h: 0.2, fontSize: 12.2, bold: true, color: C.ink, margin: 0 });
+    slide.addText(task[2], { x: 3.1, y, w: 1.46, h: 0.2, fontSize: 9.8, color: C.steel, margin: 0 });
+  });
+
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 5.15, y: 1.82, w: 3.7, h: 1.18, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: C.blue },
+  });
+  slide.addText("验收标准", { x: 5.38, y: 2.05, w: 1.2, h: 0.18, fontSize: 16.5, bold: true, color: C.navy, margin: 0 });
+  slide.addText("✓ 能解释多列比较为什么是字典序\n✓ 能用 SQL 验证索引已生效\n✓ 知道最左前缀失效发生在哪里", {
+    x: 5.38, y: 2.38, w: 2.95, h: 0.42, fontSize: 11.2, color: C.ink, margin: 0,
+  });
+
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 5.15, y: 3.18, w: 3.7, h: 1.36, rectRadius: 0.05,
+    line: { color: C.line, width: 1.1 }, fill: { color: "FFFFFF" },
+  });
+  slide.addText("本节要点", { x: 5.38, y: 3.4, w: 1.85, h: 0.18, fontSize: 16, bold: true, color: C.navy, margin: 0 });
+  slide.addText("1. B+树适合磁盘数据库，因为它矮胖、页对齐、支持范围查询。\n2. 多列索引比较本质是字典序比较。\n3. 最左前缀原则决定索引能不能用。", {
+    x: 5.38, y: 3.72, w: 3.0, h: 0.62, fontSize: 11.1, color: C.ink, margin: 0,
+  });
+  slide.addNotes("第15页口播：\n- 这页直接作为上机操作说明来讲。\n- 验收标准必须让学生能自己检查。\n- 收束到三件事：B+树原因、字典序、多列索引最左前缀。");
   footer(slide, PAGE_LABEL, 15, C);
 }
 
@@ -319,8 +361,31 @@ function extensionSlide() {
 function qaSlide() {
   const slide = pptx.addSlide();
   baseSlide(slide, "Q&A / 结束", KICKER, C);
-  slide.addText("问题时间", { x: 0.9, y: 2.1, w: 2.2, h: 0.32, fontSize: 24, bold: true, color: C.ink, margin: 0 });
-  slide.addText("实践时间", { x: 0.9, y: 2.78, w: 2.4, h: 0.32, fontSize: 24, bold: true, color: C.navy, margin: 0 });
+  slide.addText("接下来进入索引实现与答疑。", { x: 0.78, y: 1.46, w: 3.8, h: 0.2, fontSize: 14, color: C.steel, margin: 0 });
+  const blocks = [
+    [0.82, "现在先做", "先看 B+树 结构，再顺着索引代码补多列比较逻辑", C.panel],
+    [3.48, "遇到问题先问", "比较规则是不是字典序？最左前缀为什么会失效？", "FFFFFF"],
+    [6.14, "还做不出来再问", "把测试 SQL、断点停点和你改过的比较逻辑说清楚", C.blue],
+  ];
+  blocks.forEach((block, idx) => {
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x: block[0], y: 2.0, w: 2.28, h: 1.9, rectRadius: 0.05,
+      line: { color: C.line, width: 1.1 }, fill: { color: block[3] },
+    });
+    slide.addText(block[1], { x: block[0] + 0.2, y: 2.24, w: 1.88, h: 0.18, fontSize: 16, bold: true, color: C.navy, margin: 0 });
+    slide.addText(block[2], { x: block[0] + 0.2, y: 2.62, w: 1.84, h: 0.68, fontSize: 11.1, color: C.ink, margin: 0 });
+    if (idx < blocks.length - 1) {
+      slide.addText("→", { x: block[0] + 2.34, y: 2.8, w: 0.22, h: 0.16, fontSize: 18, color: C.accent, align: "center", margin: 0 });
+    }
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 1.12, y: 4.3, w: 7.7, h: 0.42, rectRadius: 0.03,
+    line: { color: C.line, width: 1 }, fill: { color: "FFFFFF" },
+  });
+  slide.addText("这半天至少要搞清两件事：为什么数据库索引是 B+树，以及多列索引为什么一定受字段顺序约束。", {
+    x: 1.28, y: 4.44, w: 7.38, h: 0.14, fontSize: 11, color: C.steel, align: "center", margin: 0,
+  });
+  slide.addNotes("结束页口播：\n- 让学生先做题，不要把最后一页讲成散会页。\n- 提问时优先说测试 SQL、断点停点和比较逻辑。\n- 收束到两件事：B+树原因，多列索引顺序约束。");
   footer(slide, PAGE_LABEL, 17, C);
 }
 

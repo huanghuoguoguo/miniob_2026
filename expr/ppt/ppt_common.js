@@ -102,25 +102,70 @@ function tableCell(slide, x, y, w, h, text, opts, palette) {
   slide.addText(text, { x: x + 0.08, y: y + 0.12, w: w - 0.16, h: h - 0.18, fontFace: opts.fontFace || FONT_FACE, fontSize: opts.fontSize || 11, bold: Boolean(opts.bold), color: opts.color || palette.ink, align: opts.align || "center", valign: "mid", margin: 0 });
 }
 
-function addCoverSlide(pptx, options) {
+function addTeachingCoverSlide(pptx, options) {
   const palette = options.palette || DEFAULT_PALETTE;
-  const headingTexts = options.headingTexts || [];
-  const images = options.images || [];
   const slide = pptx.addSlide();
   slide.background = { color: "FFFFFF" };
 
-  // 添加红色标题栏
-  slide.addShape(SHAPES.rect, { x: 0, y: 0, w: W, h: 1.18, line: { color: palette.navy, transparency: 100 }, fill: { color: palette.navy } });
-
-  // 标题栏文字
-  slide.addText("MiniOB 数据库内核实战", { x: 0.55, y: 0.35, w: 5.2, h: 0.48, fontFace: FONT_FACE, fontSize: 22, bold: true, color: "FFFFFF", margin: 0 });
-
-  headingTexts.forEach(function(item) {
-    slide.addText(item.text, { x: item.x, y: item.y, w: item.w, h: item.h, fontFace: FONT_FACE, fontSize: item.fontSize, bold: Boolean(item.bold), color: item.color, margin: 0 });
+  slide.addShape(SHAPES.rect, { x: 0, y: 0, w: W, h: 0.72, line: { color: palette.navy, transparency: 100 }, fill: { color: palette.navy } });
+  slide.addText(options.brandTitle || "MiniOB 数据库内核实战", {
+    x: 0.56, y: 0.19, w: 4.8, h: 0.28, fontFace: FONT_FACE, fontSize: 19, bold: true, color: "FFFFFF", margin: 0,
   });
-  images.forEach(function(image) {
-    addImageFrame(slide, image.path, image.x, image.y, image.w, image.h, palette);
+  slide.addText(options.sessionLabel || "", {
+    x: 8.1, y: 0.22, w: 1.3, h: 0.2, fontFace: FONT_FACE, fontSize: 10.5, color: "FFFFFF", align: "right", margin: 0,
   });
+
+  slide.addShape(SHAPES.rect, { x: 0.72, y: 1.4, w: 0.08, h: 2.48, line: { color: palette.accent, transparency: 100 }, fill: { color: palette.accent } });
+  slide.addText(options.leadTitle || "", {
+    x: 1.05, y: 1.52, w: 4.3, h: 0.42, fontFace: FONT_FACE, fontSize: options.leadFontSize || 23, bold: true, color: palette.steel, margin: 0,
+  });
+  slide.addText(options.mainTitle || "", {
+    x: 1.05, y: 2.0, w: 5.9, h: 0.54, fontFace: FONT_FACE, fontSize: options.mainFontSize || 28, bold: true, color: palette.navy, margin: 0,
+  });
+  slide.addText(options.summary || "", {
+    x: 1.05, y: 2.72, w: 6.2, h: 0.38, fontFace: FONT_FACE, fontSize: 13.2, color: palette.steel, margin: 0,
+  });
+  slide.addShape(SHAPES.line, { x: 1.05, y: 3.18, w: 5.55, h: 0, line: { color: palette.line, width: 1.4 } });
+
+  (options.chips || []).forEach(function(chip, idx) {
+    slide.addShape(SHAPES.roundRect, {
+      x: chip.x, y: chip.y || 3.5, w: chip.w, h: chip.h || 0.42, rectRadius: 0.06,
+      line: { color: palette.accent, width: 1 },
+      fill: { color: chip.fill || (idx === 1 ? palette.blue : "FFFFFF") },
+    });
+    slide.addText(chip.text, {
+      x: chip.x, y: (chip.y || 3.5) + 0.12, w: chip.w, h: 0.14,
+      fontFace: FONT_FACE, fontSize: chip.fontSize || 11.2, bold: true, color: palette.navy, align: "center", margin: 0,
+    });
+  });
+
+  slide.addShape(SHAPES.roundRect, {
+    x: 7.15, y: 1.45, w: 2.05, h: 2.65, rectRadius: 0.05,
+    line: { color: palette.line, width: 1 }, fill: { color: palette.panel },
+  });
+  slide.addText("课堂节奏", { x: 7.42, y: 1.68, w: 1.3, h: 0.18, fontFace: FONT_FACE, fontSize: 15, bold: true, color: palette.navy, margin: 0 });
+  (options.agenda || []).forEach(function(item, idx) {
+    const y = 2.05 + idx * 0.37;
+    slide.addText(String(idx + 1).padStart(2, "0"), {
+      x: 7.42, y, w: 0.35, h: 0.14, fontFace: FONT_FACE, fontSize: 10.5, bold: true, color: palette.accent, margin: 0,
+    });
+    slide.addText(item, {
+      x: 7.82, y: y - 0.02, w: 1.12, h: 0.16, fontFace: FONT_FACE, fontSize: 12.2, bold: true, color: palette.ink, margin: 0,
+    });
+  });
+
+  if (options.bottomLeft) {
+    slide.addText(options.bottomLeft, {
+      x: 1.05, y: 4.78, w: 4.6, h: 0.18, fontFace: FONT_FACE, fontSize: 12.5, color: palette.steel, margin: 0,
+    });
+  }
+  slide.addText(options.bottomRight || "天津理工大学", {
+    x: 8.0, y: 4.8, w: 1.35, h: 0.16, fontFace: FONT_FACE, fontSize: 10.5, color: palette.steel, align: "right", margin: 0,
+  });
+
+  if (options.notes) {
+    slide.addNotes(options.notes);
+  }
   return slide;
 }
 
@@ -139,5 +184,5 @@ module.exports = {
   addImageFrame: addImageFrame,
   flowArrow: flowArrow,
   tableCell: tableCell,
-  addCoverSlide: addCoverSlide,
+  addTeachingCoverSlide: addTeachingCoverSlide,
 };
