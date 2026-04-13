@@ -176,6 +176,84 @@ RC Db::create_table(const char *table_name, span<const AttrInfoSqlNode> attribut
   return RC::SUCCESS;
 }
 
+RC Db::drop_table(const char *table_name)
+{
+  RC rc = RC::SUCCESS;
+
+  // 检查表是否存在
+  auto iter = opened_tables_.find(table_name);
+  if (iter == opened_tables_.end()) {
+    LOG_WARN("Table not exist. db=%s, table_name=%s", name_.c_str(), table_name);
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+
+  Table *table = iter->second;
+
+  // 从 opened_tables_ 中移除
+  opened_tables_.erase(iter);
+
+  // 获取表相关文件路径
+  string table_meta_path = table_meta_file(path_.c_str(), table_name);
+  string table_data_path = table_data_file(path_.c_str(), table_name);
+  string table_lob_path  = table_lob_file(path_.c_str(), table_name);
+
+  // 删除表对象
+  delete table;
+
+  // 删除元数据文件
+  if (filesystem::exists(table_meta_path)) {
+    error_code ec;
+    filesystem::remove(table_meta_path, ec);
+    if (ec) {
+      LOG_ERROR("Failed to remove table meta file. db=%s, table=%s, file=%s, error=%s",
+                name_.c_str(), table_name, table_meta_path.c_str(), ec.message().c_str());
+      rc = RC::IOERR_WRITE;
+    }
+  }
+
+  // 删除数据文件
+  if (filesystem::exists(table_data_path)) {
+    error_code ec;
+    filesystem::remove(table_data_path, ec);
+    if (ec) {
+      LOG_ERROR("Failed to remove table data file. db=%s, table=%s, file=%s, error=%s",
+                name_.c_str(), table_name, table_data_path.c_str(), ec.message().c_str());
+      // 数据文件删除失败不影响整体结果，继续删除其他文件
+    }
+  }
+
+  // 删除 LOB 文件
+  if (filesystem::exists(table_lob_path)) {
+    error_code ec;
+    filesystem::remove(table_lob_path, ec);
+    if (ec) {
+      LOG_ERROR("Failed to remove table lob file. db=%s, table=%s, file=%s, error=%s",
+                name_.c_str(), table_name, table_lob_path.c_str(), ec.message().c_str());
+    }
+  }
+
+  // 删除索引文件 - 需要遍历表的索引列表删除对应文件
+  // 索引文件格式: table_name.index_name.index
+  string index_pattern = string(table_name) + ".*\\.index$";
+  for (const auto &entry : filesystem::directory_iterator(path_)) {
+    if (entry.is_regular_file()) {
+      string filename = entry.path().filename().string();
+      // 检查是否是该表的索引文件
+      if (filename.find(table_name) == 0 && filename.find(".index") != string::npos) {
+        error_code ec;
+        filesystem::remove(entry.path(), ec);
+        if (ec) {
+          LOG_ERROR("Failed to remove index file. file=%s, error=%s",
+                    entry.path().c_str(), ec.message().c_str());
+        }
+      }
+    }
+  }
+
+  LOG_INFO("Drop table success. db=%s, table=%s", name_.c_str(), table_name);
+  return rc;
+}
+
 Table *Db::find_table(const char *table_name) const
 {
   unordered_map<string, Table *>::const_iterator iter = opened_tables_.find(table_name);
