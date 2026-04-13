@@ -10,27 +10,26 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/lang/comparator.h"
 #include "common/log/log.h"
-#include "common/type/char_type.h"
+#include "common/type/text_type.h"
 #include "common/value.h"
 
-int CharType::compare(const Value &left, const Value &right) const
+int TextType::compare(const Value &left, const Value &right) const
 {
-  ASSERT(left.attr_type() == AttrType::CHARS && right.attr_type() == AttrType::CHARS, "invalid type");
+  ASSERT(left.attr_type() == AttrType::TEXTS && right.attr_type() == AttrType::TEXTS, "invalid type");
   return common::compare_string(
       (void *)left.value_.pointer_value_, left.length_, (void *)right.value_.pointer_value_, right.length_);
 }
 
-RC CharType::set_value_from_str(Value &val, const string &data) const
+RC TextType::set_value_from_str(Value &val, const string &data) const
 {
   val.set_string(data.c_str());
   return RC::SUCCESS;
 }
 
-RC CharType::cast_to(const Value &val, AttrType type, Value &result) const
+RC TextType::cast_to(const Value &val, AttrType type, Value &result) const
 {
   switch (type) {
-    case AttrType::TEXTS: {
-      // CHARS can be cast to TEXTS (they're both string types)
+    case AttrType::CHARS: {
       result.set_string(val.value_.pointer_value_, val.length_);
       return RC::SUCCESS;
     }
@@ -39,21 +38,19 @@ RC CharType::cast_to(const Value &val, AttrType type, Value &result) const
   return RC::SUCCESS;
 }
 
-int CharType::cast_cost(AttrType type)
+int TextType::cast_cost(AttrType type)
 {
-  if (type == AttrType::CHARS) {
+  if (type == AttrType::TEXTS) {
     return 0;
   }
-  if (type == AttrType::TEXTS) {
-    return 1;  // CHARS can be cast to TEXTS with low cost
+  if (type == AttrType::CHARS) {
+    return 1;  // TEXT can be cast to CHARS with low cost
   }
   return INT32_MAX;
 }
 
-RC CharType::to_string(const Value &val, string &result) const
+RC TextType::to_string(const Value &val, string &result) const
 {
-  stringstream ss;
-  ss << val.value_.pointer_value_;
-  result = ss.str();
+  result = string(val.value_.pointer_value_, val.length_);
   return RC::SUCCESS;
 }
