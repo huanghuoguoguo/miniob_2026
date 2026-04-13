@@ -44,6 +44,44 @@ RC BplusTreeIndex::create(Table *table, const char *file_name, const IndexMeta &
   return RC::SUCCESS;
 }
 
+RC BplusTreeIndex::create(Table *table, const char *file_name, const IndexMeta &index_meta, const vector<const FieldMeta *> &field_metas)
+{
+  if (inited_) {
+    LOG_WARN("Failed to create index due to the index has been created before. file_name:%s", file_name);
+    return RC::RECORD_OPENNED;
+  }
+
+  if (field_metas.empty()) {
+    LOG_WARN("Failed to create index due to empty field_metas. file_name:%s", file_name);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  Index::init(index_meta, field_metas);
+
+  // TODO: 目前多列索引只使用第一个字段，后续需要实现真正的组合键
+  // 计算 total_key_length 作为组合键的总长度
+  int total_key_length = 0;
+  for (const FieldMeta *field : field_metas) {
+    total_key_length += field->len();
+  }
+
+  BufferPoolManager &bpm = table->db()->buffer_pool_manager();
+  // 暂时使用第一个字段创建索引
+  const FieldMeta *first_field = field_metas[0];
+  RC rc = index_handler_.create(table->db()->log_handler(), bpm, file_name, first_field->type(), total_key_length);
+  if (RC::SUCCESS != rc) {
+    LOG_WARN("Failed to create index_handler for multi-column index, file_name:%s, rc:%s",
+        file_name, strrc(rc));
+    return rc;
+  }
+
+  inited_ = true;
+  table_  = table;
+  LOG_INFO("Successfully create multi-column index, file_name:%s, index:%s, field_num:%d",
+    file_name, index_meta.name(), static_cast<int>(field_metas.size()));
+  return RC::SUCCESS;
+}
+
 RC BplusTreeIndex::open(Table *table, const char *file_name, const IndexMeta &index_meta, const FieldMeta &field_meta)
 {
   if (inited_) {
@@ -66,6 +104,35 @@ RC BplusTreeIndex::open(Table *table, const char *file_name, const IndexMeta &in
   table_  = table;
   LOG_INFO("Successfully open index, file_name:%s, index:%s, field:%s",
     file_name, index_meta.name(), index_meta.field());
+  return RC::SUCCESS;
+}
+
+RC BplusTreeIndex::open(Table *table, const char *file_name, const IndexMeta &index_meta, const vector<const FieldMeta *> &field_metas)
+{
+  if (inited_) {
+    LOG_WARN("Failed to open index due to the index has been inited before. file_name:%s", file_name);
+    return RC::RECORD_OPENNED;
+  }
+
+  if (field_metas.empty()) {
+    LOG_WARN("Failed to open index due to empty field_metas. file_name:%s", file_name);
+    return RC::INVALID_ARGUMENT;
+  }
+
+  Index::init(index_meta, field_metas);
+
+  BufferPoolManager &bpm = table->db()->buffer_pool_manager();
+  RC rc = index_handler_.open(table->db()->log_handler(), bpm, file_name);
+  if (RC::SUCCESS != rc) {
+    LOG_WARN("Failed to open index_handler for multi-column index, file_name:%s, rc:%s",
+        file_name, strrc(rc));
+    return rc;
+  }
+
+  inited_ = true;
+  table_  = table;
+  LOG_INFO("Successfully open multi-column index, file_name:%s, index:%s, field_num:%d",
+    file_name, index_meta.name(), static_cast<int>(field_metas.size()));
   return RC::SUCCESS;
 }
 
